@@ -43,6 +43,7 @@ class ConsumableTodoListEntity(
                 status=TodoItemStatus(item["status"]),
                 due=item.get("due"),
                 description=item.get("description"),
+                completed=item.get("completed"),
             )
             for item in self.coordinator.todo_dicts()
         ]

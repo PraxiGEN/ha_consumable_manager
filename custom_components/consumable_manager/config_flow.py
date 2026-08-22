@@ -419,7 +419,11 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
         return [
             entity_id
             for entity_id, entry in ent_reg.entities.items()
-            if not entry.disabled_by and pattern.search(entity_id)
+            if (
+                not entry.disabled_by
+                and entity_id.startswith("sensor.")
+                and pattern.search(entity_id)
+            )
         ]
 
     async def async_step_entities(self,
@@ -445,7 +449,9 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
                 vol.Optional(
                     CONF_SOURCE_ENTITIES, default=self._current_entity_ids()
                 ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(multiple=True)
+                    selector.EntitySelectorConfig(
+                        domain="sensor", multiple=True
+                    )
                 ),
             }
         )

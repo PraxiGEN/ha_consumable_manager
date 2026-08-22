@@ -188,16 +188,22 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         base = f"{self._entry.entry_id}_{kind}"
         return f"{base}_{suffix}" if suffix else base
 
+    def _completed_time(self, status: str) -> datetime | None:
+        """按状态返回完成时间：completed 时为当前 UTC 时间，否则为 None。"""
+        return datetime.now(timezone.utc) if status == TODO_STATUS_COMPLETED else None
+
     def _upsert_auto_todo(self,
         uid: str,
         summary: str,
         status: str,
         description: str | None = None,
     ) -> None:
+        completed = self._completed_time(status)
         if uid in self._todos:
             self._todos[uid]["status"] = status
             self._todos[uid]["summary"] = summary
             self._todos[uid]["description"] = description
+            self._todos[uid]["completed"] = completed
         else:
             self._todos[uid] = {
                 "uid": uid,
@@ -205,12 +211,14 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
                 "status": status,
                 "due": None,
                 "description": description,
+                "completed": completed,
             }
 
     @callback
     def _complete_todo(self, uid: str) -> None:
         if uid in self._todos:
             self._todos[uid]["status"] = TODO_STATUS_COMPLETED
+            self._todos[uid]["completed"] = datetime.now(timezone.utc)
 
     @callback
     def async_upsert_todo(
@@ -230,6 +238,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
             "status": status,
             "due": due,
             "description": description,
+            "completed": self._completed_time(status),
         }
 
     @callback
