@@ -1,6 +1,7 @@
 """耗材管理器 配置流平台。"""
 from __future__ import annotations
 
+import datetime
 import re
 from typing import Any
 from uuid import uuid4
@@ -22,7 +23,8 @@ from .const import (
     CONF_ITEM_ID, CONF_ITEM_NAME, CONF_ITEM_TYPE, CONF_MODEL,
     CONF_NOTIFICATION, CONF_NOTIFY_CUSTOMIZE, CONF_NOTIFY_ENTITIES,
     CONF_NOTIFY_MODE, CONF_NOTIFY_SCHEDULE_TIME, CONF_NOTIFY_STYLE,
-    CONF_NOTIFY_SYSTEM, NOTIFY_MODE_REALTIME, NOTIFY_MODES,
+    CONF_NOTIFY_SYSTEM, NOTIFY_MODE_REALTIME, NOTIFY_MODE_SCHEDULED,
+    NOTIFY_MODES,
     NOTIFY_STYLE_HUMAN, NOTIFY_STYLES, CONF_QUANTITY, CONF_REMOVE_ITEMS, CONF_SELECTED_ITEM,
     CONF_SOURCE_ENTITIES, CONF_STOCK_ITEMS, CONF_STOCK_THRESHOLD,
     CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR, CONF_THRESHOLD_TYPE,
@@ -43,6 +45,15 @@ from .user_library import (
 async def _load_library(hass: HomeAssistant) -> Library:
     """在 executor 中加载内置库 + 用户库合并结果。"""
     return await async_load_library(hass)
+
+def _norm_time(value: Any) -> str:
+    """时间选择器返回的 datetime.time 或 "HH:MM[:SS]" 规范化为 "HH:MM"。"""
+    if isinstance(value, datetime.time):
+        return value.strftime("%H:%M")
+    text = str(value or "")
+    if len(text) >= 5 and text[2] == ":":
+        return text[:5]
+    return text
 
 def _build_entry_type_options(library: Library,
     translations: dict[str, str],
@@ -581,8 +592,10 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             mode = str(
                 user_input.get(CONF_NOTIFY_MODE, NOTIFY_MODE_REALTIME)
             )
-            schedule_time = str(
-                user_input.get(CONF_NOTIFY_SCHEDULE_TIME, "") or ""
+            # 时间字段可留空（vol.Any(None, …)）；仅定时模式落库，实时模式忽略
+            schedule_time = (
+                _norm_time(user_input.get(CONF_NOTIFY_SCHEDULE_TIME, ""))
+                if mode == NOTIFY_MODE_SCHEDULED else ""
             )
 
             # 至少选择一个通知渠道
@@ -644,7 +657,7 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
                 ): selector.BooleanSelector(selector.BooleanSelectorConfig()),
                 vol.Optional(
                     CONF_NOTIFY_ENTITIES,
-                    default=list(defaults.get(CONF_NOTIFY_ENTITIES, []) or []),
+                    default=list(_default(CONF_NOTIFY_ENTITIES, []) or []),
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="notify", multiple=True
@@ -664,11 +677,13 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(options=mode_options)
                 ),
+                # vol.Any(None, …) 为 HA 官方「可空选择器」写法：时间控件常驻但可留空
                 vol.Optional(
                     CONF_NOTIFY_SCHEDULE_TIME,
-                    default=str(_default(CONF_NOTIFY_SCHEDULE_TIME, "")),
-                ): selector.TimeSelector(
-                    selector.TimeSelectorConfig()
+                    default=(_default(CONF_NOTIFY_SCHEDULE_TIME, "") or None),
+                ): vol.Any(
+                    None,
+                    selector.TimeSelector(selector.TimeSelectorConfig()),
                 ),
             }
         )
