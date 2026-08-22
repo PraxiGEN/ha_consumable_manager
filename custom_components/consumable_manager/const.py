@@ -31,6 +31,7 @@ CONF_THRESHOLD_UNIT: Final = "threshold_unit"  # 阈值单位（% / 分钟 / 小
 CONF_THRESHOLD_OPERATOR: Final = "threshold_operator"  # 计算方式（大于 / 小于 / 等于）
 CONF_MODEL: Final = "model"
 CONF_LAST_REPLACED: Final = "last_replaced"  # 上次更换时间（持久化，重启不丢）
+CONF_LAST_ALERT_STATUS: Final = "last_alert_status"  # 上次告警态（持久化，reload 后恢复跳变基线）
 
 # 阈值类型：由绑定实体的语义决定
 THRESHOLD_TYPE_LIFETIME_PERCENT: Final = "lifetime_percent"  # 剩余寿命（%）
