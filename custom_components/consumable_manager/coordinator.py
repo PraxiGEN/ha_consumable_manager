@@ -154,6 +154,11 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         """通知 / 待办固定话术（本地化，取不到时回退键，不硬编码）。"""
         return self._labels.get(key, key)
 
+    def _label_sep(self) -> str:
+        """标签与内容分隔符：中文全角冒号，其他语言半角冒号加空格。"""
+        language = str(self.hass.config.language)
+        return "：" if language.lower().startswith("zh") else ": "
+
     def _auto_uid(self, kind: str, suffix: str = "") -> str:
         """自动待办 uid（稳定，用于去重与状态恢复）。"""
         base = f"{self._entry.entry_id}_{kind}"
@@ -644,6 +649,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             return raw
         return (
             f"{self._notify_text(NOTIFY_TEXT_LAST_REPLACED)}"
+            f"{self._label_sep()}"
             f"{local.strftime('%Y-%m-%d %H:%M')}"
         )
 
@@ -659,7 +665,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         names = "、".join(
             f"{c.display_name(locale)}（{c.unit}）" for c in items
         )
-        return f"{self._notify_text(NOTIFY_TEXT_CONSUMABLES)}{names}"
+        return (
+            f"{self._notify_text(NOTIFY_TEXT_CONSUMABLES)}"
+            f"{self._label_sep()}{names}"
+        )
 
     def _replace_description(self) -> str | None:
         """更换待办描述：耗材信息（库）+ 上次更换时间，多行。"""

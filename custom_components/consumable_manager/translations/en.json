@@ -76,8 +76,8 @@
       "options": {
         "low_stock": "out of stock, please restock.",
         "replace_needed": "low on power, please replace.",
-        "last_replaced": "Last replaced: ",
-        "consumables": "Consumables: "
+        "last_replaced": "Last replaced",
+        "consumables": "Consumables"
       }
     },
     "notify_mode": {
