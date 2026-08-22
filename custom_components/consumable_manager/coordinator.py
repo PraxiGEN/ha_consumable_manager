@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 import json
-from typing import Any
+from typing import Any, Final
 from uuid import uuid4
 
 from homeassistant.config_entries import ConfigEntry
@@ -13,12 +13,13 @@ from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.dt import as_local
 
 from .const import (
     DOMAIN, LOGGER, CONF_ENTRY_TYPE, CONF_ITEM_ID, CONF_ITEM_NAME,
-    CONF_ITEM_TYPE, CONF_LAST_REPLACED, CONF_MODEL, CONF_NOTIFY_MODE,
+    CONF_ITEM_TYPE, CONF_LAST_ALERT_STATUS, CONF_LAST_REPLACED, CONF_MODEL, CONF_NOTIFY_MODE,
     CONF_NOTIFY_STYLE, CONF_QUANTITY, CONF_SOURCE_ENTITIES, CONF_STOCK_ITEMS,
     CONF_STOCK_THRESHOLD, CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR, CONF_THRESHOLD_TYPE,
     CONF_THRESHOLD_UNIT, CONF_UNIT, DEFAULT_THRESHOLD, DEFAULT_THRESHOLD_TYPE,
@@ -44,6 +45,8 @@ STATE_LOW_STOCK = "low_stock"  # 库存条目：有库存项低于阈值
 STATE_REPLACE_NEEDED = "replace_needed"  # 耗材类型条目：有绑定实体越过阈值
 STOCK_STATES: tuple[str, ...] = (STATE_OK, STATE_LOW_STOCK)
 REPLACE_STATES: tuple[str, ...] = (STATE_OK, STATE_REPLACE_NEEDED)
+# 协调器定时轮询兜底间隔（秒）：保证即使实体变化事件漏订阅也能周期性检测跳变
+UPDATE_INTERVAL_SECONDS: Final[int] = 60
 # ---- 待办状态 ----
 TODO_STATUS_NEEDS_ACTION = "needs_action"
 TODO_STATUS_COMPLETED = "completed"
@@ -94,6 +97,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         self._labels = labels or {}
         self._todos: dict[str, dict[str, Any]] = {}
         self._prev_alert_status: str | None = None
+        self._baseline_established: bool = False
         self.alert_pending: bool = False
 
     @property
@@ -272,20 +276,44 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         )
 
     async def _async_notify_on_transition(self) -> None:
-        """状态跳变检测：仅「正常 → 异常」瞬间发一次（首次不建基线、持续不重复）。"""
+        """状态跳变检测：仅「正常 → 异常」瞬间发一次（首次不建基线、持续不重复）。
+
+        reload / 重建后从持久化的 last_alert_status 恢复基线，避免把
+        「运行期已正常、reload 后变异常」误判为「首次基线」而吞掉通知。
+        """
         status = self.alert_status
+        # reload/重建后内存基线丢失：从持久化状态恢复（全新条目为 None=首次不补发）
+        if self._prev_alert_status is None:
+            self._prev_alert_status = self._entry.options.get(
+                CONF_LAST_ALERT_STATUS
+            )
         prev = self._prev_alert_status
         self._prev_alert_status = status
         if prev is None or prev != STATE_OK or status == STATE_OK:
             if status == STATE_OK:
                 self.alert_pending = False
+            self._persist_alert_status(status)
             return
+        self._persist_alert_status(status)
         await self._async_send_alert()
+
+    def _persist_alert_status(self, status: str) -> None:
+        """持久化上次告警态（仅运行期且变化时写 options，供 reload 后恢复基线）。"""
+        if not self._baseline_established:
+            return
+        if self._entry.options.get(CONF_LAST_ALERT_STATUS) == status:
+            return
+        options = dict(self._entry.options)
+        options[CONF_LAST_ALERT_STATUS] = status
+        self._write_options(options)
 
     async def _async_update_data(self) -> None:
         """每次刷新：同步自动待办 + 检查告警跳变通知。"""
         self._sync_todos()
         await self._async_notify_on_transition()
+        # 首次刷新完成（setup 期）后，后续运行期刷新才持久化告警基线，
+        # 避免 setup 期间写 options 触发 reload 循环。
+        self._baseline_established = True
         return None
 
 class StockCoordinator(BaseCoordinator):
@@ -893,6 +921,22 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 )
 
     # ---- 通知（需更换跳变：消息按样式生成）----
+    async def async_added_to_hass(self) -> None:
+        """订阅绑定实体状态变化，即时刷新（手动改值即时检测跳变通知）。"""
+        await super().async_added_to_hass()
+        entities = self.source_entities
+        if entities:
+            self.async_on_remove(
+                async_track_state_change_event(
+                    self.hass, list(entities), self._on_state_change
+                )
+            )
+
+    @callback
+    def _on_state_change(self, event: Any) -> None:
+        """绑定实体状态变化 → 请求刷新（进而检测跳变并可能发通知）。"""
+        self.hass.async_create_task(self.async_request_refresh())
+
     @property
     def alert_status(self) -> str:
         """更换告警状态：任一绑定实体越过阈值即需要更换。"""
@@ -965,10 +1009,18 @@ def build_coordinator(
     """按条目类型创建对应协调器（type_meta 为库类型元数据，自定义类型为 None）。"""
     entry_type = entry.data.get(CONF_ENTRY_TYPE)
     if entry_type == ENTRY_TYPE_STOCK:
-        return StockCoordinator(hass, entry, labels)
-    if entry_type == ENTRY_TYPE_NOTIFICATION:
-        return BaseCoordinator(hass, entry, labels)
-    return ConsumableTypeCoordinator(hass, entry, labels, type_meta, library)
+        coordinator: BaseCoordinator = StockCoordinator(hass, entry, labels)
+    elif entry_type == ENTRY_TYPE_NOTIFICATION:
+        coordinator = BaseCoordinator(hass, entry, labels)
+    else:
+        coordinator = ConsumableTypeCoordinator(
+            hass, entry, labels, type_meta, library
+        )
+    # 定时轮询兜底：实体值经事件订阅即时刷新；此处保证即使漏订阅也能周期
+    # 性检测跳变。通知条目（BaseCoordinator 直接充当）无业务状态，无需轮询。
+    if entry_type != ENTRY_TYPE_NOTIFICATION:
+        coordinator.update_interval = timedelta(seconds=UPDATE_INTERVAL_SECONDS)
+    return coordinator
 
 @dataclass
 class ConsumableManagerData:
