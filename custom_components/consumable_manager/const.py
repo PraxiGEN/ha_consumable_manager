@@ -115,14 +115,27 @@ TODO_KINDS: Final[tuple[str, ...]] = (TODO_KIND_REPLACE, TODO_KIND_PURCHASE)
 
 # ---- 通知 / 待办固定话术（翻译键 selector.notify_text.*）----
 NOTIFY_TEXT_LOW_STOCK: Final = "low_stock"  # 「库存告急，请购买。」
-NOTIFY_TEXT_REPLACE_NEEDED: Final = "replace_needed"  # 「电量低，请更换。」
+NOTIFY_TEXT_REPLACE_NEEDED: Final = "replace_needed"  # 「请更换耗材。」（通用话术）
 NOTIFY_TEXT_LAST_REPLACED: Final = "last_replaced"  # 「上次更换：」
 NOTIFY_TEXT_CONSUMABLES: Final = "consumables"  # 「耗材：」
+# 更换待办描述标签
+NOTIFY_TEXT_DESC_AREA: Final = "desc_area"  # 「区域」
+NOTIFY_TEXT_DESC_DEVICE: Final = "desc_device"  # 「设备」
+NOTIFY_TEXT_DESC_ENTITY: Final = "desc_entity"  # 「实体」
+NOTIFY_TEXT_DESC_SPECS: Final = "desc_specs"  # 「规格」（耗材库 meta）
+NOTIFY_TEXT_DESC_THRESHOLD: Final = "desc_threshold"  # 「阈值」（库存描述）
+NOTIFY_TEXT_UNKNOWN: Final = "unknown"  # 「未知」（未绑定耗材）
 NOTIFY_TEXTS: Final[tuple[str, ...]] = (
     NOTIFY_TEXT_LOW_STOCK,
     NOTIFY_TEXT_REPLACE_NEEDED,
     NOTIFY_TEXT_LAST_REPLACED,
     NOTIFY_TEXT_CONSUMABLES,
+    NOTIFY_TEXT_DESC_AREA,
+    NOTIFY_TEXT_DESC_DEVICE,
+    NOTIFY_TEXT_DESC_ENTITY,
+    NOTIFY_TEXT_DESC_SPECS,
+    NOTIFY_TEXT_DESC_THRESHOLD,
+    NOTIFY_TEXT_UNKNOWN,
 )
 
 # ---- 通知（全局通知条目 + 条目级覆盖）----
