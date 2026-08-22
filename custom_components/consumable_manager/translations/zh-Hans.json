@@ -75,9 +75,15 @@
     "notify_text": {
       "options": {
         "low_stock": "库存告急，请购买。",
-        "replace_needed": "电量低，请更换。",
+        "replace_needed": "请更换耗材。",
         "last_replaced": "上次更换",
-        "consumables": "耗材"
+        "consumables": "耗材",
+        "desc_area": "区域",
+        "desc_device": "设备",
+        "desc_entity": "实体",
+        "desc_specs": "规格",
+        "desc_threshold": "阈值",
+        "unknown": "未知"
       }
     },
     "notify_mode": {

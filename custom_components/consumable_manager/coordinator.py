@@ -3,11 +3,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+import json
 from typing import Any
 from uuid import uuid4
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import area_registry as ar
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 from homeassistant.util.dt import as_local
@@ -20,7 +24,10 @@ from .const import (
     CONF_THRESHOLD_UNIT, CONF_UNIT, DEFAULT_THRESHOLD, DEFAULT_THRESHOLD_TYPE,
     DEFAULT_THRESHOLD_UNIT, ENTRY_SORT_PREFIXES, ENTRY_TYPE_NOTIFICATION, ENTRY_TYPE_STOCK,
     NOTIFY_MODE_REALTIME, NOTIFY_MODE_SCHEDULED, NOTIFY_STYLE_HUMAN, NOTIFY_STYLE_VALUE,
-    NOTIFY_TEXT_CONSUMABLES, NOTIFY_TEXT_LAST_REPLACED, NOTIFY_TEXT_LOW_STOCK, NOTIFY_TEXT_REPLACE_NEEDED,
+    NOTIFY_TEXT_CONSUMABLES, NOTIFY_TEXT_DESC_AREA, NOTIFY_TEXT_DESC_DEVICE,
+    NOTIFY_TEXT_DESC_ENTITY, NOTIFY_TEXT_DESC_SPECS, NOTIFY_TEXT_DESC_THRESHOLD,
+    NOTIFY_TEXT_LAST_REPLACED,
+    NOTIFY_TEXT_LOW_STOCK, NOTIFY_TEXT_REPLACE_NEEDED, NOTIFY_TEXT_UNKNOWN,
     OPERATOR_EQUAL, OPERATOR_GREATER_THAN, OPERATOR_LESS_THAN, THRESHOLD_DEFAULT_OPERATOR,
     THRESHOLD_TYPE_LIFETIME_PERCENT, TIME_UNIT_TO_HOURS, TODO_KIND_PURCHASE, TODO_KIND_REPLACE,
 )
@@ -395,8 +402,9 @@ class StockCoordinator(BaseCoordinator):
 
     # ---- 待办同步 ----
     def _purchase_description(self) -> str | None:
-        """购买待办描述：低库存项明细（名称（型号）：数量 / 阈值）。"""
+        """购买待办描述：低库存项明细（名称（型号）：数量 / 阈值），标签走翻译键。"""
         lines: list[str] = []
+        threshold_label = self._notify_text(NOTIFY_TEXT_DESC_THRESHOLD)
         for item_id in self.low_items():
             item = self.item(item_id)
             if item is None:
@@ -407,7 +415,10 @@ class StockCoordinator(BaseCoordinator):
             qty = item.get(CONF_QUANTITY, 0)
             threshold = item.get(CONF_STOCK_THRESHOLD, 0)
             label = f"{name}（{model}）" if model else name
-            lines.append(f"{label}：{qty} {unit} / 阈值 {threshold} {unit}")
+            lines.append(
+                f"{label}：{qty} {unit} / {threshold_label} "
+                f"{threshold} {unit}"
+            )
         return "\n".join(lines) if lines else None
 
     @callback
@@ -449,7 +460,7 @@ class StockCoordinator(BaseCoordinator):
 
     def _alert_text(self, style: str) -> str:
         """按样式生成消息文案（多低库存项逐行）。
-        human：「{名称}库存告急，请购买。」（话术走翻译键）；
+        human：「{名称} 库存告急，请购买。」（话术走翻译键，通用文案）；
         value：「{名称} {数量}{单位}」。
         """
         lines: list[str] = []
@@ -461,7 +472,7 @@ class StockCoordinator(BaseCoordinator):
                 )
             else:
                 lines.append(
-                    f"{name}{self._notify_text(NOTIFY_TEXT_LOW_STOCK)}"
+                    f"{name} {self._notify_text(NOTIFY_TEXT_LOW_STOCK)}"
                 )
         return "\n".join(lines) or self.title
 
@@ -685,14 +696,102 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             f"{self._label_sep()}{names}"
         )
 
+    def _entity_area(self, entity_id: str) -> str | None:
+        """实体所属区域名（实体 → 设备 → 区域注册表），无则 None。"""
+        ent_reg = er.async_get(self.hass)
+        dev_reg = dr.async_get(self.hass)
+        ent = ent_reg.async_get(entity_id)
+        if ent is None or not getattr(ent, "device_id", None):
+            return None
+        device = dev_reg.async_get(ent.device_id)
+        if device is None or not getattr(device, "area_id", None):
+            return None
+        area = ar.async_get(self.hass).async_get_area(device.area_id)
+        return getattr(area, "name", None) or None
+
+    def _entity_consumables(self,
+        snapshot: dict[str, Any],
+    ) -> tuple[str | None, str | None]:
+        """设备绑定的耗材（库内按 manufacturer+model 匹配）。
+
+        返回 (耗材名称清单, 规格行)；未绑定或库未加载返回 (None, None)。
+        """
+        if self._library is None:
+            return None, None
+        items = self._library.find_compatible(
+            snapshot.get("manufacturer"),
+            snapshot.get("device_model"),
+        )
+        if not items:
+            return None, None
+        locale = self.hass.config.language
+        names = "、".join(
+            f"{c.display_name(locale)}（{c.unit}）" for c in items
+        )
+        specs = "；".join(
+            f"{c.display_name(locale)}: "
+            f"{json.dumps(c.meta, ensure_ascii=False)}"
+            for c in items if c.meta
+        )
+        return names, specs or None
+
     def _replace_description(self) -> str | None:
-        """更换待办描述：耗材信息（库）+ 上次更换时间，多行。"""
+        """更换待办描述：每个触发实体一段（区域/设备/实体/耗材/规格），
+        未绑定耗材显示「耗材：未知」；无触发实体时回退类型耗材信息 + 上次更换。
+        """
         parts: list[str] = []
-        if cons := self._consumables_label():
+        snapshots = {
+            snap["entity_id"]: snap
+            for snap in self.source_snapshots
+            if snap.get("entity_id")
+        }
+        for entity_id in self.triggered_entities():
+            lines: list[str] = []
+            if area := self._entity_area(entity_id):
+                lines.append(
+                    f"{self._notify_text(NOTIFY_TEXT_DESC_AREA)}"
+                    f"{self._label_sep()}{area}"
+                )
+            state = self.hass.states.get(entity_id)
+            state_name = (
+                getattr(state, "name", None)
+                or (state.attributes.get("friendly_name") if state else None)
+            )
+            snapshot = snapshots.get(entity_id, {})
+            display = snapshot.get("device_name") or state_name
+            if display:
+                lines.append(
+                    f"{self._notify_text(NOTIFY_TEXT_DESC_DEVICE)}"
+                    f"{self._label_sep()}{display}"
+                )
+            lines.append(
+                f"{self._notify_text(NOTIFY_TEXT_DESC_ENTITY)}"
+                f"{self._label_sep()}{entity_id}"
+            )
+            cons_names, specs = self._entity_consumables(snapshot)
+            if cons_names:
+                lines.append(
+                    f"{self._notify_text(NOTIFY_TEXT_CONSUMABLES)}"
+                    f"{self._label_sep()}{cons_names}"
+                )
+            else:
+                lines.append(
+                    f"{self._notify_text(NOTIFY_TEXT_CONSUMABLES)}"
+                    f"{self._label_sep()}"
+                    f"{self._notify_text(NOTIFY_TEXT_UNKNOWN)}"
+                )
+            if specs:
+                lines.append(
+                    f"{self._notify_text(NOTIFY_TEXT_DESC_SPECS)}"
+                    f"{self._label_sep()}{specs}"
+                )
+            parts.append("\n".join(lines))
+        if not parts and (cons := self._consumables_label()):
+            # 无触发实体（如刚恢复）：保留类型耗材信息
             parts.append(cons)
         if last := self._last_replaced_label():
             parts.append(last)
-        return "\n".join(parts) if parts else None
+        return "\n\n".join(parts) if parts else None
 
     @callback
     def async_mark_replaced(self) -> None:
@@ -776,7 +875,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
 
     def _alert_text(self, style: str) -> str:
         """按样式生成消息文案（多设备逐行）。
-        human：「{设备名}电量低，请更换。」（话术走翻译键）；
+        human：「{设备名} 请更换耗材。」（话术走翻译键，通用文案）；
         value：「{设备名} {当前值}{单位}」。
         """
         lines: list[str] = []
@@ -785,7 +884,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 lines.append(f"{display} {value}{unit}")
             else:
                 lines.append(
-                    f"{display}{self._notify_text(NOTIFY_TEXT_REPLACE_NEEDED)}"
+                    f"{display} {self._notify_text(NOTIFY_TEXT_REPLACE_NEEDED)}"
                 )
         return "\n".join(lines) or self.title
 

@@ -75,9 +75,15 @@
     "notify_text": {
       "options": {
         "low_stock": "out of stock, please restock.",
-        "replace_needed": "low on power, please replace.",
+        "replace_needed": "Please replace the consumable.",
         "last_replaced": "Last replaced",
-        "consumables": "Consumables"
+        "consumables": "Consumables",
+        "desc_area": "Area",
+        "desc_device": "Device",
+        "desc_entity": "Entity",
+        "desc_specs": "Specs",
+        "desc_threshold": "Threshold",
+        "unknown": "Unknown"
       }
     },
     "notify_mode": {
