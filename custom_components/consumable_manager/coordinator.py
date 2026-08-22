@@ -508,7 +508,11 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         entity_ids: list[str],
         seen: set[str] | None = None,
     ) -> list[str]:
-        """递归展开 group 成员（防循环去重保序；每次重解析 = 动态跟随）。"""
+        """递归展开群组成员（防循环去重保序；每次重解析 = 动态跟随）。
+
+        群组判定：`group.` 域实体，或任意域但状态携带非空 `entity_id`
+        成员列表属性（group 集成生成的 sensor/其他域组实体均满足）。
+        """
         seen = seen or set()
         result: list[str] = []
         for entity_id in entity_ids:
@@ -516,8 +520,19 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 continue
             seen.add(entity_id)
             state = self.hass.states.get(entity_id)
-            if state is not None and entity_id.startswith("group."):
-                members = list(state.attributes.get("entity_id") or [])
+            members: list[str] | None = None
+            if state is not None:
+                attr = state.attributes.get("entity_id")
+                is_group = entity_id.startswith("group.") or (
+                    isinstance(attr, list)
+                    and bool(attr)
+                    and all(
+                        isinstance(m, str) and "." in m for m in attr
+                    )
+                )
+                if is_group and isinstance(attr, list):
+                    members = attr
+            if members:
                 result.extend(self._expand_groups(members, seen))
             else:
                 result.append(entity_id)
