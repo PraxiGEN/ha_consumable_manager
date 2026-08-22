@@ -401,15 +401,17 @@ class StockCoordinator(BaseCoordinator):
         self.async_set_quantity(item_id, self.quantity(item_id) + delta)
 
     # ---- 待办同步 ----
-    def _purchase_description(self) -> str | None:
-        """购买待办描述：低库存项明细（名称（型号）：数量 / 阈值），标签走翻译键。"""
+    def _purchase_description(self, item_id: str | None = None) -> str | None:
+        """购买待办描述：低库存项明细（名称（型号）：数量 / 阈值），标签走翻译键。
+        item_id 为空时遍历所有低库存项（向后兼容）；否则只描述单个库存项。
+        """
         lines: list[str] = []
         threshold_label = self._notify_text(NOTIFY_TEXT_DESC_THRESHOLD)
-        for item_id in self.low_items():
-            item = self.item(item_id)
+        for iid in ([item_id] if item_id else self.low_items()):
+            item = self.item(iid)
             if item is None:
                 continue
-            name = item.get(CONF_ITEM_NAME) or item.get(CONF_MODEL) or item_id
+            name = item.get(CONF_ITEM_NAME) or item.get(CONF_MODEL) or iid
             model = item.get(CONF_MODEL)
             unit = item.get(CONF_UNIT, "")
             qty = item.get(CONF_QUANTITY, 0)
@@ -423,34 +425,30 @@ class StockCoordinator(BaseCoordinator):
 
     @callback
     def _sync_todos(self) -> None:
-        """低库存合并为一条购买待办，全部补齐自动完成（勾选后仍低则下次刷新弹回）。"""
-        uid = self._auto_uid(TODO_KIND_PURCHASE)
-        low = self.low_items()
-        if low:
-            names = "、".join(self.item_name(item_id) for item_id in low)
+        """每个低库存项独立一条购买待办；补齐后该条自动完成（仍低则回弹提醒）。"""
+        low = set(self.low_items())
+        purchase_prefix = f"{self._entry.entry_id}_{TODO_KIND_PURCHASE}_"
+        # 1. 低库存项：确保为 needs_action（不存在则创建，已存在则同步回提醒态）
+        for item_id in low:
+            uid = self._auto_uid(TODO_KIND_PURCHASE, item_id)
             self._upsert_auto_todo(
                 uid,
-                f"{self._label(TODO_KIND_PURCHASE)} {names}",
+                f"{self._label(TODO_KIND_PURCHASE)} {self.item_name(item_id)}",
                 TODO_STATUS_NEEDS_ACTION,
-                self._purchase_description(),
+                self._purchase_description(item_id),
             )
-        elif uid in self._todos:
-            # 全部补齐：完成并保留原摘要（避免空名称尾巴）
-            self._upsert_auto_todo(
-                uid,
-                self._todos[uid]["summary"],
-                TODO_STATUS_COMPLETED,
-                self._todos[uid].get("description"),
-            )
-
-        # 清理遗留的旧格式逐项购买待办（uid 带库存项后缀）；手动待办不受影响
-        stale = [
-            other
-            for other in self._todos
-            if other.startswith(f"{self._entry.entry_id}_{TODO_KIND_PURCHASE}_")
-        ]
-        for other in stale:
-            self._todos.pop(other, None)
+        # 2. 曾低但已补齐的项：将其 needs_action 待办标记完成（恢复不删，保留历史）
+        for uid, todo in list(self._todos.items()):
+            if not uid.startswith(purchase_prefix):
+                continue
+            item_id = uid[len(purchase_prefix):]
+            if todo["status"] == TODO_STATUS_NEEDS_ACTION and item_id not in low:
+                self._upsert_auto_todo(
+                    uid, todo["summary"], TODO_STATUS_COMPLETED,
+                    todo.get("description"),
+                )
+        # 3. 清理升级遗留的合并版待办（无后缀的旧格式）
+        self._todos.pop(self._auto_uid(TODO_KIND_PURCHASE), None)
 
     # ---- 通知（低库存跳变：消息按样式生成）----
     @property
@@ -735,9 +733,35 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         )
         return names, specs or None
 
-    def _replace_description(self) -> str | None:
-        """更换待办描述：每个触发实体一段（区域/设备/实体/耗材/规格），
-        未绑定耗材显示「耗材：未知」；无触发实体时回退类型耗材信息 + 上次更换。
+    def _replace_summary(self, entity_id: str) -> str:
+        """更换待办标题：设备名称 + 「请更换耗材。」（通用话术，按语言）。
+
+        约定：每个触发实体各生成一条待办，标题取其设备名，如
+        「书房温湿度传感器 请更换耗材。」（多设备时不合并）。
+        """
+        snapshots = {
+            snap["entity_id"]: snap
+            for snap in self.source_snapshots
+            if snap.get("entity_id")
+        }
+        snapshot = snapshots.get(entity_id, {})
+        state = self.hass.states.get(entity_id)
+        state_name = (
+            getattr(state, "name", None)
+            or (state.attributes.get("friendly_name") if state else None)
+        )
+        display = (
+            snapshot.get("device_name")
+            or snapshot.get("device_model")
+            or state_name
+            or entity_id
+        )
+        return f"{display} {self._notify_text(NOTIFY_TEXT_REPLACE_NEEDED)}"
+
+    def _replace_description(self, entity_id: str | None = None) -> str | None:
+        """更换待办描述（单实体）：区域/设备/实体/耗材/规格；未绑定耗材显示
+        「耗材：未知」。entity_id 为空时遍历所有触发实体；无触发实体则回退
+        类型耗材信息，并附上次更换时间。
         """
         parts: list[str] = []
         snapshots = {
@@ -745,19 +769,19 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             for snap in self.source_snapshots
             if snap.get("entity_id")
         }
-        for entity_id in self.triggered_entities():
+        for eid in ([entity_id] if entity_id else self.triggered_entities()):
             lines: list[str] = []
-            if area := self._entity_area(entity_id):
+            if area := self._entity_area(eid):
                 lines.append(
                     f"{self._notify_text(NOTIFY_TEXT_DESC_AREA)}"
                     f"{self._label_sep()}{area}"
                 )
-            state = self.hass.states.get(entity_id)
+            state = self.hass.states.get(eid)
             state_name = (
                 getattr(state, "name", None)
                 or (state.attributes.get("friendly_name") if state else None)
             )
-            snapshot = snapshots.get(entity_id, {})
+            snapshot = snapshots.get(eid, {})
             display = snapshot.get("device_name") or state_name
             if display:
                 lines.append(
@@ -766,7 +790,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 )
             lines.append(
                 f"{self._notify_text(NOTIFY_TEXT_DESC_ENTITY)}"
-                f"{self._label_sep()}{entity_id}"
+                f"{self._label_sep()}{eid}"
             )
             cons_names, specs = self._entity_consumables(snapshot)
             if cons_names:
@@ -794,16 +818,28 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return "\n\n".join(parts) if parts else None
 
     @callback
-    def async_mark_replaced(self) -> None:
-        """标记已更换：记录时间、完成"更换"待办，并联动扣减关联类型的库存项。"""
+    def async_mark_replaced(self, uid: str | None = None) -> None:
+        """标记已更换：记录时间、完成「更换」待办，并联动扣减关联类型的库存项。
+
+        uid 为空时完成本条目全部自动更换待办（手动「标记全部已更换」）；
+        传入具体 uid 时只完成对应实体的待办（勾选单条待办场景）。
+        """
         options = self.options
         options[CONF_LAST_REPLACED] = datetime.now(timezone.utc).isoformat()
         self._write_options(options)
-        uid = self._auto_uid(TODO_KIND_REPLACE)
-        self._complete_todo(uid)
-        # 勾选瞬间把描述同步为刚发生的时间（下次刷新也会刷新）
-        if uid in self._todos:
-            self._todos[uid]["description"] = self._replace_description()
+        prefix = self._auto_uid(TODO_KIND_REPLACE)
+        if uid:
+            self._complete_todo(uid)
+            # 勾选瞬间把描述同步为刚发生的时间（下次刷新也会刷新）
+            if uid in self._todos:
+                entity_id = uid[len(prefix) + 1:]
+                self._todos[uid]["description"] = (
+                    self._replace_description(entity_id)
+                )
+        else:
+            for other in list(self._todos):
+                if other == prefix or other.startswith(prefix + "_"):
+                    self._complete_todo(other)
         # 联动扣减：库存条目中与该耗材类型绑定的库存项各 -1
         stock = _find_stock_coordinator(self.hass)
         if stock is not None:
@@ -815,29 +851,46 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         self, uid: str, old_status: str | None, new_status: str
     ) -> None:
         """勾选「更换」待办 = 已更换（仅自动更换待办、needs_action→completed 跳变触发）。"""
-        if uid != self._auto_uid(TODO_KIND_REPLACE):
+        prefix = self._auto_uid(TODO_KIND_REPLACE)
+        if uid != prefix and not uid.startswith(prefix + "_"):
             return
         if new_status != TODO_STATUS_COMPLETED:
             return
         if old_status == TODO_STATUS_COMPLETED:
             return
-        self.async_mark_replaced()
+        self.async_mark_replaced(uid)
 
     # ---- 待办同步 ----
     @callback
     def _sync_todos(self) -> None:
-        """需要更换时创建待办，恢复后自动完成。"""
-        uid = self._auto_uid(TODO_KIND_REPLACE)
-        summary = f"{self._label(TODO_KIND_REPLACE)} {self.title}"
-        description = self._replace_description()
-        if self.replace_status == STATE_REPLACE_NEEDED:
+        """每个触发实体各生成一条「更换」待办（标题=设备名+请更换耗材）；
+
+        实体越过阈值解除（恢复）后该条自动完成；实体解绑后清理遗留待办。
+        """
+        triggered = set(self.triggered_entities())
+        bound = set(self.source_entities)
+        prefix = self._auto_uid(TODO_KIND_REPLACE) + "_"
+        # 为每个触发实体创建 / 刷新独立待办
+        for entity_id in triggered:
+            uid = self._auto_uid(TODO_KIND_REPLACE, entity_id)
+            summary = self._replace_summary(entity_id)
+            description = self._replace_description(entity_id)
             self._upsert_auto_todo(
                 uid, summary, TODO_STATUS_NEEDS_ACTION, description
             )
-        elif uid in self._todos:
-            self._upsert_auto_todo(
-                uid, summary, TODO_STATUS_COMPLETED, description
-            )
+        # 已存在的自动更换待办：解绑删除、恢复完成
+        for uid, todo in list(self._todos.items()):
+            if not uid.startswith(prefix):
+                continue
+            entity_id = uid[len(prefix):]
+            if entity_id not in bound:
+                self._todos.pop(uid, None)
+                continue
+            if entity_id not in triggered:
+                self._upsert_auto_todo(
+                    uid, todo.get("summary"), TODO_STATUS_COMPLETED,
+                    todo.get("description"),
+                )
 
     # ---- 通知（需更换跳变：消息按样式生成）----
     @property
