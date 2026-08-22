@@ -1,0 +1,21 @@
+{
+  "types": {
+    "ceshi": {
+      "name": "测试",
+      "icon": "mdi:package-variant",
+      "default_threshold_type": "lifetime_percent",
+      "default_threshold": 20.0,
+      "default_threshold_unit": "%"
+    },
+    "feshi": {
+      "name": "feshi",
+      "icon": "mdi:package-variant",
+      "default_threshold_type": "lifetime_percent",
+      "default_threshold": 20.0,
+      "default_threshold_unit": "%"
+    }
+  },
+  "consumables": [],
+  "devices": [],
+  "schema_version": 2
+}

@@ -1,0 +1,72 @@
+# 用户库贡献自动组装
+#
+# 流程：
+#   1. 用户把本地用户库原样提交为 contributions/<你的GitHub用户名>/user_library.json，
+#      PR 到 contributions 分支（不同用户不同目录，并行 PR 不冲突）；
+#   2. 本工作流在 contributions 分支上自动处理所有草稿目录：
+#      - 逐个运行摄入工具（锚点去重裁决 / 多语言拆解进 names.json / 排序归位 / 原子写）
+#      - 组装完成后移除整个 contributions/ 目录（先加后删：文件相对主分支净变化为零）
+#      - 组装结果提交回 contributions 分支；
+#   3. 维护者审查 contributions 后手动合入主分支（主分支只接受这一步合入，
+#      且净效果仅为 library/ 变更——用户库草稿不会进入主分支）。
+#
+# 防循环：仅当 contributions/**/user_library.json 变化时触发（paths 过滤）；
+# 自动组装只改动 library/ 与移除草稿目录，无新内容时不提交，不会再次触发。
+name: Ingest user-library contributions
+
+on:
+  push:
+    branches: [contributions]
+    paths:
+      - "contributions/**/user_library.json"
+
+permissions:
+  contents: write
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Baseline check (built-in library must be clean)
+        run: python tools/ingest.py --check
+
+      - name: Ingest all user-library drafts
+        run: |
+          found=0
+          for draft in contributions/*/user_library.json; do
+            [ -f "$draft" ] || continue
+            found=1
+            echo "== Ingesting $draft =="
+            python tools/ingest.py --ingest \
+              --user-lib "$draft" \
+              --library custom_components/consumable_manager/library
+          done
+          if [ "$found" = 0 ]; then
+            echo "No draft files under contributions/*/."
+          fi
+
+      - name: Post-ingest check
+        run: python tools/ingest.py --check
+
+      - name: Commit assembled library back to contributions
+        run: |
+          git add custom_components/consumable_manager/library/
+          # 组装后移除全部草稿目录（先加后删）：文件相对 main 净变化为零，
+          # 手动合入 main 时不会把用户库带进主分支（git merge 是全量 diff）。
+          git rm -rq --ignore-unmatch contributions/ 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No changes (nothing new to ingest)."
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -m "[skip ci] Ingest user-library contributions (drafts removed after assembly)"
+            git push
+          fi
