@@ -1,0 +1,13 @@
+{
+  "domain": "consumable_manager",
+  "name": "Consumable Manager",
+  "codeowners": ["@PraxiGEN"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/PraxiGEN/ha-consumable-manager",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/PraxiGEN/ha-consumable-manager/issues",
+  "requirements": [],
+  "version": "0.1.1"
+}

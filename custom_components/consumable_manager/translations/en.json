@@ -1,0 +1,467 @@
+{
+  "title": "Consumable Manager",
+  "config": {
+    "abort": {
+      "already_configured": "This type is already added",
+      "item_not_found": "Stock item not found"
+    },
+    "error": {
+      "required": "This field is required",
+      "invalid_key": "Type key allows only lowercase letters, digits and underscores",
+      "key_exists": "This type key already exists"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "entry_type": "Type"
+        },
+        "description": "Choose the entry type to add: Stock (manages custom stock items), a consumable type, or a custom type. Each type allows only one entry.",
+        "title": "Select type"
+      },
+      "custom_type": {
+        "data": {
+          "type_key": "Type key (id)",
+          "type_name_zh": "Name",
+          "type_icon": "Icon",
+          "type_threshold_type": "Default threshold type",
+          "type_threshold": "Default threshold",
+          "type_threshold_unit": "Default threshold unit"
+        },
+        "description": "Define a new consumable type, written into the user library (merged with built-in types). The type key allows only lowercase letters, digits and underscores, and must not duplicate an existing type.",
+        "title": "Custom consumable type"
+      }
+    }
+  },
+  "selector": {
+    "entry_type": {
+      "options": {
+        "battery": "Wireless device (battery)",
+        "custom": "Custom type",
+        "filter": "Purifier filter",
+        "ink": "Printer consumables",
+        "notification": "Notification channels",
+        "robot_vacuum": "Robot vacuum consumables",
+        "stock": "Consumable stock management",
+        "water_purifier": "Water purifier consumables"
+      }
+    },
+    "threshold_operator": {
+      "options": {
+        "equal": "Equal",
+        "greater_than": "Greater than",
+        "less_than": "Less than"
+      }
+    },
+    "threshold_type": {
+      "options": {
+        "lifetime_percent": "Remaining lifetime (%)",
+        "remaining_time": "Remaining time",
+        "used_time": "Used time"
+      }
+    },
+    "threshold_unit": {
+      "options": {
+        "days": "Days",
+        "hours": "Hours",
+        "minutes": "Minutes"
+      }
+    },
+    "todo_kind": {
+      "options": {
+        "purchase": "Purchase",
+        "replace": "Replace"
+      }
+    },
+    "notify_text": {
+      "options": {
+        "low_stock": "out of stock, please restock.",
+        "replace_needed": "low on power, please replace.",
+        "last_replaced": "Last replaced",
+        "consumables": "Consumables"
+      }
+    },
+    "notify_mode": {
+      "options": {
+        "realtime": "Realtime (push on trigger)",
+        "scheduled": "Scheduled (merge and push at a fixed time daily)"
+      }
+    },
+    "notify_style": {
+      "options": {
+        "human": "Human wording",
+        "value": "Raw value"
+      }
+    },
+    "add_method": {
+      "options": {
+        "consumable": "Common consumable",
+        "custom": "Custom"
+      }
+    },
+    "service_action": {
+      "options": {
+        "add": "Add",
+        "consume": "Consume"
+      }
+    },
+    "service_include": {
+      "options": {
+        "stock": "Stock",
+        "consumable_types": "Consumable type entries"
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "no_channel": "Select at least one notification channel (system notification or entities)"
+    },
+    "step": {
+      "add_item": {
+        "title": "Add stock",
+        "description": "Pick a related consumable type (required) and how to add: from the library or custom.",
+        "data": {
+          "add_method": "Add method",
+          "item_type": "Related consumable type"
+        }
+      },
+      "consumable": {
+        "title": "Common consumable",
+        "description": "Pick a consumable from the library and enter the quantity; name, type and unit inherit from the template.",
+        "data": {
+          "consumable_id": "Consumable",
+          "quantity": "Quantity",
+          "stock_threshold": "Stock threshold"
+        }
+      },
+      "custom": {
+        "title": "Custom stock item",
+        "description": "Define a custom stock item (name, type, model, unit, quantity, stock threshold; all required except meta). The ID is auto-generated as type+model and written into the user library, reusable as a common consumable.",
+        "data": {
+          "item_name": "Name",
+          "item_type": "Related consumable type",
+          "model": "Model",
+          "quantity": "Quantity",
+          "stock_threshold": "Stock threshold",
+          "unit": "Unit"
+        }
+      },
+      "edit_item": {
+        "data": {
+          "quantity": "Quantity",
+          "stock_threshold": "Stock threshold"
+        },
+        "description": "Edit stock item \"{name}\" (only quantity and stock threshold are editable; to change name/model, delete and re-add the item).",
+        "title": "Edit stock item"
+      },
+      "entities": {
+        "data": {
+          "entity_regex": "Regex for entity IDs (optional)",
+          "source_entities": "Consumable entities"
+        },
+        "description": "Union of regex match on entity IDs (priority) and manual multi-select. You can also pick a group helper: its members are expanded and monitored individually (group changes are followed dynamically).",
+        "title": "Manage consumable entities"
+      },
+      "init": {
+        "description": "Choose an action.",
+        "menu_options": {
+          "add_item": "Add stock",
+          "entities": "Manage consumable entities",
+          "notification": "Notification channels",
+          "remove_items": "Remove stock",
+          "select_item": "Edit stock",
+          "threshold": "Set threshold"
+        },
+        "title": "Consumable management"
+      },
+      "notification": {
+        "title": "Notification channels",
+        "description": "Configure alert notifications: channels are multi-select (HA system notification + notification entities). Push mode: realtime (send on trigger) or scheduled (merge all pending alerts into one notification at a fixed time every day, titled with the integration name). Message style: human wording (e.g. \"Office temperature sensor low battery, please replace.\") or raw value (e.g. \"Office temperature sensor 18%\").",
+        "data": {
+          "customize": "Customize notifications for this entry (off = fall back to global notification channels)",
+          "system": "HA system notification",
+          "entities": "Notification entities (multiple)",
+          "style": "Message style",
+          "mode": "Push mode",
+          "schedule_time": "Scheduled push time (scheduled mode only; leave empty on an entry to follow the global time)"
+        }
+      },
+      "remove_items": {
+        "data": {
+          "remove_items": "Stock items to remove"
+        },
+        "description": "Check the stock items to remove (multiple allowed).",
+        "title": "Remove stock items"
+      },
+      "select_item": {
+        "data": {
+          "selected_item": "Stock item"
+        },
+        "description": "Choose the stock item to edit.",
+        "title": "Select stock item"
+      },
+      "threshold": {
+        "data": {
+          "threshold": "Threshold",
+          "threshold_operator": "Comparison",
+          "threshold_type": "Threshold type",
+          "threshold_unit": "Unit"
+        },
+        "description": "Choose the threshold type, value, unit, and comparison (greater than / less than / equal).",
+        "title": "Set threshold"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "replace_status": {
+        "name": "Replace status",
+        "state": {
+          "ok": "OK",
+          "replace_needed": "Replace needed"
+        },
+        "state_attributes": {
+          "consumable_type": {
+            "name": "Consumable type",
+            "state": {
+              "battery": "Wireless device (battery)",
+              "filter": "Purification device filter",
+              "ink": "Printer consumable",
+              "robot_vacuum": "Robot vacuum consumable",
+              "water_purifier": "Water purifier consumable"
+            }
+          },
+          "last_replaced": {
+            "name": "Last replaced"
+          },
+          "source_entities": {
+            "name": "Bound entities"
+          },
+          "threshold": {
+            "name": "Threshold"
+          },
+          "threshold_operator": {
+            "name": "Comparison",
+            "state": {
+              "equal": "Equal",
+              "greater_than": "Greater than",
+              "less_than": "Less than"
+            }
+          },
+          "threshold_type": {
+            "name": "Threshold type",
+            "state": {
+              "lifetime_percent": "Remaining lifetime (%)",
+              "remaining_time": "Remaining time",
+              "used_time": "Used time"
+            }
+          },
+          "threshold_unit": {
+            "name": "Unit",
+            "state": {
+              "days": "Days",
+              "hours": "Hours",
+              "minutes": "Minutes"
+            }
+          },
+          "triggered_entities": {
+            "name": "Triggered entities"
+          }
+        }
+      },
+      "stock_item": {
+        "state_attributes": {
+          "consumable_type": {
+            "name": "Consumable type",
+            "state": {
+              "battery": "Wireless device (battery)",
+              "filter": "Purification device filter",
+              "ink": "Printer consumable",
+              "robot_vacuum": "Robot vacuum consumable",
+              "water_purifier": "Water purifier consumable"
+            }
+          },
+          "item_id": {
+            "name": "Item ID"
+          },
+          "low_stock": {
+            "name": "Low stock",
+            "state": {
+              "false": "No",
+              "true": "Yes"
+            }
+          },
+          "stock_threshold": {
+            "name": "Stock threshold"
+          },
+          "unit": {
+            "name": "Unit"
+          }
+        }
+      },
+      "stock_status": {
+        "name": "Stock status",
+        "state": {
+          "low_stock": "Low stock",
+          "ok": "OK"
+        },
+        "state_attributes": {
+          "item_count": {
+            "name": "Stock item count"
+          },
+          "low_items": {
+            "name": "Low stock items"
+          }
+        }
+      }
+    },
+    "todo": {
+      "todo": {
+        "name": "Todo"
+      }
+    }
+  },
+  "services": {
+    "bind_entity": {
+      "name": "Bind entity to consumable",
+      "description": "Bind a device consumable entity to a template-library consumable (auto-match or manual consumable_id), writing it into the matching type entry; optionally link a stock item.",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Device entity to bind (e.g. sensor.filter_life)"
+        },
+        "consumable_id": {
+          "name": "Consumable ID",
+          "description": "Consumable to bind; leave empty to auto-match by device"
+        },
+        "item": {
+          "name": "Linked stock item",
+          "description": "Optional stock item to link"
+        }
+      }
+    },
+    "query_binding": {
+      "name": "Query bindings",
+      "description": "Query binding relations (filter by entity, consumable or stock item).",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Filter by entity ID"
+        },
+        "consumable_id": {
+          "name": "Consumable ID",
+          "description": "Filter by consumable ID"
+        },
+        "item": {
+          "name": "Stock item",
+          "description": "Filter by stock item"
+        }
+      }
+    },
+    "add_consumable": {
+      "name": "Add consumable to user library",
+      "description": "Add a consumable to the local user library (config/.consumable_manager/user_library.json, atomic write). The consumable ID is auto-generated from type + model, e.g. filter_hepa13; conflicts link the built-in entry or append a short hash.",
+      "fields": {
+        "cons_type": {
+          "name": "Consumable type",
+          "description": "Consumable type (built-in or custom key)"
+        },
+        "model": {
+          "name": "Model",
+          "description": "Model number used to derive the consumable ID"
+        },
+        "name": {
+          "name": "Name",
+          "description": "Display name"
+        },
+        "unit": {
+          "name": "Unit",
+          "description": "Unit of measurement (e.g. 个, 片, 毫升)"
+        },
+        "meta": {
+          "name": "Specs",
+          "description": "Optional specs as a JSON object"
+        }
+      }
+    },
+    "add_device": {
+      "name": "Add device mapping",
+      "description": "Add or overwrite a device-to-consumable mapping in the local user library (anchor: manufacturer + model; overlapping entries are replaced entirely; atomic write).",
+      "fields": {
+        "manufacturer": {
+          "name": "Manufacturer",
+          "description": "Device manufacturer"
+        },
+        "models": {
+          "name": "Model list",
+          "description": "Device model(s), JSON string array"
+        },
+        "name": {
+          "name": "Device name",
+          "description": "Device display name"
+        },
+        "consumables": {
+          "name": "Consumable ID list",
+          "description": "Consumable IDs used by the device, JSON string array"
+        }
+      }
+    },
+    "add_type": {
+      "name": "Add custom type",
+      "description": "Add a custom consumable type to the local user library (config/.consumable_manager/user_library.json, atomic write). The type key allows only lowercase letters, digits and underscores and must not duplicate an existing type (new-only semantics); threshold fields follow the built-in type schema.",
+      "fields": {
+        "type_key": {
+          "name": "Type key",
+          "description": "Type key (lowercase letters, digits, underscores; must be unique)"
+        },
+        "name": {
+          "name": "Name",
+          "description": "Type display name"
+        },
+        "icon": {
+          "name": "Icon",
+          "description": "MDI icon (default mdi:package-variant)"
+        },
+        "default_threshold_type": {
+          "name": "Default threshold type",
+          "description": "Default threshold type for the new type"
+        },
+        "default_threshold": {
+          "name": "Default threshold",
+          "description": "Default threshold value"
+        },
+        "default_threshold_unit": {
+          "name": "Default threshold unit",
+          "description": "Default threshold unit"
+        }
+      }
+    },
+    "extract": {
+      "name": "Extract data",
+      "description": "Extract structured data of entries (selectable data items).",
+      "fields": {
+        "include": {
+          "name": "Data items",
+          "description": "Data items to include (stock / consumable_types)"
+        }
+      }
+    },
+    "adjust_stock": {
+      "name": "Adjust stock",
+      "description": "Increase or decrease the quantity of a stock item (picked from the stock item selector).",
+      "fields": {
+        "action": {
+          "name": "Action",
+          "description": "add = increase, consume = decrease"
+        },
+        "quantity": {
+          "name": "Quantity",
+          "description": "Amount to add or consume"
+        },
+        "item": {
+          "name": "Stock item",
+          "description": "Stock item to adjust"
+        }
+      }
+    }
+  }
+}

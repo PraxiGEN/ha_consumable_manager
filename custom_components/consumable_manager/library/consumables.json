@@ -1,0 +1,141 @@
+[
+  {
+    "id": "battery_9v",
+    "type": "battery",
+    "model": "9V",
+    "name": "9V battery",
+    "unit": "节",
+    "meta": {
+      "size": "26.5mm x 17.5mm x 48.5mm",
+      "voltage": 9,
+      "chemistry": "Alkaline"
+    }
+  },
+  {
+    "id": "battery_aa",
+    "type": "battery",
+    "model": "AA",
+    "name": "AA battery",
+    "unit": "节",
+    "meta": {
+      "size": "14mm x 50mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline"
+    }
+  },
+  {
+    "id": "battery_aaa",
+    "type": "battery",
+    "model": "AAA",
+    "name": "AAA battery",
+    "unit": "节",
+    "meta": {
+      "size": "10.5mm x 44.5mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline"
+    }
+  },
+  {
+    "id": "battery_cr2032",
+    "type": "battery",
+    "model": "CR2032",
+    "name": "Button cell CR2032",
+    "unit": "粒",
+    "meta": {
+      "size": "20mm x 3.2mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn"
+    }
+  },
+  {
+    "id": "battery_cr2450",
+    "type": "battery",
+    "model": "CR2450",
+    "name": "Button cell CR2450",
+    "unit": "粒",
+    "meta": {
+      "size": "24.5mm x 5.0mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn"
+    }
+  },
+  {
+    "id": "filter_generic_pm25",
+    "type": "filter",
+    "model": "PM2.5-通用",
+    "name": "Generic PM2.5 filter",
+    "unit": "个",
+    "meta": {}
+  },
+  {
+    "id": "filter_hepa13",
+    "type": "filter",
+    "model": "HEPA-13",
+    "name": "HEPA 13 filter",
+    "unit": "个",
+    "meta": {
+      "lifetime_hours": 1500,
+      "grade": "H13"
+    }
+  },
+  {
+    "id": "ink_hp680_black",
+    "type": "ink",
+    "model": "HP680_black",
+    "name": "HP 680 black ink cartridge",
+    "unit": "支",
+    "meta": {
+      "page_yield": 480,
+      "color": "black"
+    }
+  },
+  {
+    "id": "ink_hp680_color",
+    "type": "ink",
+    "model": "HP680_color",
+    "name": "HP 680 tri-color ink cartridge",
+    "unit": "支",
+    "meta": {
+      "page_yield": 150,
+      "color": "tri-color"
+    }
+  },
+  {
+    "id": "robot_vacuum_mop",
+    "type": "robot_vacuum",
+    "model": "mop",
+    "name": "Robot vacuum mop cloth",
+    "unit": "块",
+    "meta": {}
+  },
+  {
+    "id": "robot_vacuum_side_brush",
+    "type": "robot_vacuum",
+    "model": "side_brush",
+    "name": "Robot vacuum side brush",
+    "unit": "个",
+    "meta": {}
+  },
+  {
+    "id": "water_purifier_pp",
+    "type": "water_purifier",
+    "model": "PP-棉",
+    "name": "PP sediment filter cartridge",
+    "unit": "支",
+    "meta": {
+      "stage": "第一级",
+      "material": "聚丙烯熔喷"
+    }
+  },
+  {
+    "id": "water_purifier_ro",
+    "type": "water_purifier",
+    "model": "RO-膜",
+    "name": "RO reverse osmosis membrane",
+    "unit": "支",
+    "meta": {
+      "stage": "第四级",
+      "material": "复合反渗透"
+    }
+  }
+]

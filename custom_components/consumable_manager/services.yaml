@@ -1,0 +1,249 @@
+bind_entity:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    entity_id:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: sensor.filter_life
+      selector:
+        entity: {}
+    consumable_id:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: filter_hepa13
+      selector:
+        text: {}
+    item:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        entity:
+          domain: sensor
+          integration: consumable_manager
+
+query_binding:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    entity_id:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: sensor.filter_life
+      selector:
+        entity: {}
+    consumable_id:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: filter_hepa13
+      selector:
+        text: {}
+    item:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        entity:
+          domain: sensor
+          integration: consumable_manager
+
+add_consumable:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    cons_type:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: filter
+      # 下拉列出内置类型；用户库自定义类型不在静态选项中，
+      # 靠 custom_value 手输，后端 async_add_consumable 的库类型校验兜底。
+      selector:
+        select:
+          mode: dropdown
+          custom_value: true
+          translation_key: entry_type
+          options:
+            - battery
+            - filter
+            - ink
+            - robot_vacuum
+            - water_purifier
+    model:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: HEPA-13
+      selector:
+        text: {}
+    name:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: HEPA 13 filter
+      selector:
+        text: {}
+    unit:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: 个
+      selector:
+        text: {}
+    meta:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: {"grade": "H13"}
+      selector:
+        object: {}
+
+add_device:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    manufacturer:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: Xiaomi
+      selector:
+        text: {}
+    models:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: '["zhimi.airpurifier.m4"]'
+      selector:
+        object: {}
+    name:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: 米家空气净化器 4
+      selector:
+        text: {}
+    consumables:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: '["filter_hepa13"]'
+      selector:
+        object: {}
+
+add_type:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    type_key:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: air_conditioner
+      selector:
+        text: {}
+    name:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: 空调滤网
+      selector:
+        text: {}
+    icon:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: mdi:air-conditioner
+      selector:
+        text: {}
+    default_threshold_type:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      default: lifetime_percent
+      selector:
+        select:
+          options:
+            - lifetime_percent
+            - remaining_time
+            - used_time
+          translation_key: threshold_type
+    default_threshold:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      default: 20
+      example: 20
+      selector:
+        number:
+          min: 0
+          step: 1
+    default_threshold_unit:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      default: "%"
+      selector:
+        select:
+          options:
+            - "%"
+            - minutes
+            - hours
+            - days
+          translation_key: threshold_unit
+
+extract:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    include:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        select:
+          options:
+            - stock
+            - consumable_types
+          multiple: true
+          mode: list
+          translation_key: service_include
+
+adjust_stock:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    action:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      default: add
+      selector:
+        select:
+          options:
+            - add
+            - consume
+          translation_key: service_action
+    item:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        entity:
+          domain: sensor
+          integration: consumable_manager
+    quantity:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      default: 0
+      example: 1
+      selector:
+        number:
+          min: -9999
+          step: 1

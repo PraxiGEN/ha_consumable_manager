@@ -1,0 +1,467 @@
+{
+  "title": "耗材管理器",
+  "config": {
+    "abort": {
+      "already_configured": "该类型已添加",
+      "item_not_found": "未找到该库存项"
+    },
+    "error": {
+      "required": "此项必填",
+      "invalid_key": "类型键仅允许小写字母、数字与下划线",
+      "key_exists": "该类型键已存在"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "entry_type": "类型"
+        },
+        "description": "选择要添加的条目类型：库存（统一管理自定义库存项）、某个耗材类型，或自定义类型。每个类型仅允许添加一个条目。",
+        "title": "选择类型"
+      },
+      "custom_type": {
+        "data": {
+          "type_key": "类型键（id）",
+          "type_name_zh": "名称",
+          "type_icon": "图标",
+          "type_threshold_type": "默认阈值类型",
+          "type_threshold": "默认阈值",
+          "type_threshold_unit": "默认阈值单位"
+        },
+        "description": "定义一个新的耗材类型，将写入用户库（与内置类型合并）。类型键仅允许小写字母、数字与下划线，且不能与已有类型重复。",
+        "title": "自定义耗材类型"
+      }
+    }
+  },
+  "selector": {
+    "entry_type": {
+      "options": {
+        "battery": "无线设备（电池）",
+        "custom": "自定义类型",
+        "filter": "净化设备滤芯",
+        "ink": "打印机耗材",
+        "notification": "通知渠道设置",
+        "robot_vacuum": "扫地机耗材",
+        "stock": "耗材库存管理",
+        "water_purifier": "净水器耗材"
+      }
+    },
+    "threshold_operator": {
+      "options": {
+        "equal": "等于",
+        "greater_than": "大于",
+        "less_than": "小于"
+      }
+    },
+    "threshold_type": {
+      "options": {
+        "lifetime_percent": "剩余寿命（%）",
+        "remaining_time": "剩余时间",
+        "used_time": "已使用时长"
+      }
+    },
+    "threshold_unit": {
+      "options": {
+        "days": "天",
+        "hours": "小时",
+        "minutes": "分钟"
+      }
+    },
+    "todo_kind": {
+      "options": {
+        "purchase": "购买",
+        "replace": "更换"
+      }
+    },
+    "notify_text": {
+      "options": {
+        "low_stock": "库存告急，请购买。",
+        "replace_needed": "电量低，请更换。",
+        "last_replaced": "上次更换",
+        "consumables": "耗材"
+      }
+    },
+    "notify_mode": {
+      "options": {
+        "realtime": "实时推送（触发即推送）",
+        "scheduled": "定时统一推送（每天固定时刻合并推送）"
+      }
+    },
+    "notify_style": {
+      "options": {
+        "human": "人性化文案",
+        "value": "状态值"
+      }
+    },
+    "add_method": {
+      "options": {
+        "consumable": "常用耗材",
+        "custom": "自定义"
+      }
+    },
+    "service_action": {
+      "options": {
+        "add": "增加",
+        "consume": "减少"
+      }
+    },
+    "service_include": {
+      "options": {
+        "stock": "库存",
+        "consumable_types": "耗材类型条目"
+      }
+    }
+  },
+  "options": {
+    "error": {
+      "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）"
+    },
+    "step": {
+      "add_item": {
+        "title": "添加库存",
+        "description": "选择关联耗材类型（必选）与添加方式：从耗材库选常用耗材，或自定义。",
+        "data": {
+          "add_method": "添加方式",
+          "item_type": "关联耗材类型"
+        }
+      },
+      "consumable": {
+        "title": "常用耗材",
+        "description": "从耗材库选择耗材并输入数量，其余字段（名称、类型、单位）自动继承内置定义。",
+        "data": {
+          "consumable_id": "耗材",
+          "quantity": "数量",
+          "stock_threshold": "库存阈值"
+        }
+      },
+      "custom": {
+        "title": "自定义库存项",
+        "description": "自定义一个库存项（名称、关联类型、型号、单位、数量、库存阈值，除规格信息外均必填）；ID 按「类型+型号」自动生成并写入用户库，供「常用耗材」复用。",
+        "data": {
+          "item_name": "名称",
+          "item_type": "关联耗材类型",
+          "model": "型号",
+          "quantity": "数量",
+          "stock_threshold": "库存阈值",
+          "unit": "单位"
+        }
+      },
+      "edit_item": {
+        "data": {
+          "quantity": "数量",
+          "stock_threshold": "库存阈值"
+        },
+        "description": "修改库存项「{name}」（仅数量与库存阈值可改，名称、型号等请在删除后重新添加）。",
+        "title": "修改库存项"
+      },
+      "entities": {
+        "data": {
+          "entity_regex": "正则匹配实体 ID（可选）",
+          "source_entities": "耗材实体"
+        },
+        "description": "正则匹配实体 ID（优先）与手动多选取并集；也可选择辅助元素中的群组，群组内实体将自动展开逐个监控（群组变化动态跟随）。",
+        "title": "管理耗材实体"
+      },
+      "init": {
+        "description": "选择要执行的操作。",
+        "menu_options": {
+          "add_item": "添加库存",
+          "entities": "管理耗材实体",
+          "notification": "通知渠道设置",
+          "remove_items": "删除库存",
+          "select_item": "修改库存",
+          "threshold": "设置阈值"
+        },
+        "title": "耗材管理"
+      },
+      "notification": {
+        "title": "通知渠道设置",
+        "description": "配置提醒通知：渠道可多选（HA 系统通知 + 通知实体）。推送模式：实时（触发即推送）或定时（每天固定时刻把所有告警合并为一条统一推送，标题为集成名称）。消息样式两种：人性化文案（如「书房温湿度传感器电量低，请更换。」）或状态值（如「书房温湿度传感器 18%」）。",
+        "data": {
+          "customize": "自定义本条目通知（关闭则回退全局通知渠道设置）",
+          "system": "HA 系统通知",
+          "entities": "通知实体（可多选）",
+          "style": "消息样式",
+          "mode": "推送模式",
+          "schedule_time": "定时推送时刻（仅定时模式生效；条目级留空则跟随全局时刻）"
+        }
+      },
+      "remove_items": {
+        "data": {
+          "remove_items": "删除的库存项"
+        },
+        "description": "勾选要删除的库存项（可多选）。",
+        "title": "删除库存项"
+      },
+      "select_item": {
+        "data": {
+          "selected_item": "库存项"
+        },
+        "description": "选择要修改的库存项。",
+        "title": "选择库存项"
+      },
+      "threshold": {
+        "data": {
+          "threshold": "阈值",
+          "threshold_operator": "计算方式",
+          "threshold_type": "阈值类型",
+          "threshold_unit": "单位"
+        },
+        "description": "选择阈值类型、数值、单位与计算方式（大于 / 小于 / 等于）。",
+        "title": "设置阈值"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "replace_status": {
+        "name": "更换状态",
+        "state": {
+          "ok": "正常",
+          "replace_needed": "需要更换"
+        },
+        "state_attributes": {
+          "consumable_type": {
+            "name": "耗材类型",
+            "state": {
+              "battery": "无线设备（电池）",
+              "filter": "净化设备滤芯",
+              "ink": "打印机耗材",
+              "robot_vacuum": "扫地机耗材",
+              "water_purifier": "净水器耗材"
+            }
+          },
+          "last_replaced": {
+            "name": "上次更换"
+          },
+          "source_entities": {
+            "name": "绑定实体"
+          },
+          "threshold": {
+            "name": "阈值"
+          },
+          "threshold_operator": {
+            "name": "计算方式",
+            "state": {
+              "equal": "等于",
+              "greater_than": "大于",
+              "less_than": "小于"
+            }
+          },
+          "threshold_type": {
+            "name": "阈值类型",
+            "state": {
+              "lifetime_percent": "剩余寿命（%）",
+              "remaining_time": "剩余时间",
+              "used_time": "已使用时长"
+            }
+          },
+          "threshold_unit": {
+            "name": "单位",
+            "state": {
+              "days": "天",
+              "hours": "小时",
+              "minutes": "分钟"
+            }
+          },
+          "triggered_entities": {
+            "name": "触发实体"
+          }
+        }
+      },
+      "stock_item": {
+        "state_attributes": {
+          "consumable_type": {
+            "name": "耗材类型",
+            "state": {
+              "battery": "无线设备（电池）",
+              "filter": "净化设备滤芯",
+              "ink": "打印机耗材",
+              "robot_vacuum": "扫地机耗材",
+              "water_purifier": "净水器耗材"
+            }
+          },
+          "item_id": {
+            "name": "条目标识"
+          },
+          "low_stock": {
+            "name": "是否缺货",
+            "state": {
+              "false": "否",
+              "true": "是"
+            }
+          },
+          "stock_threshold": {
+            "name": "库存阈值"
+          },
+          "unit": {
+            "name": "单位"
+          }
+        }
+      },
+      "stock_status": {
+        "name": "库存状态",
+        "state": {
+          "low_stock": "库存不足",
+          "ok": "正常"
+        },
+        "state_attributes": {
+          "item_count": {
+            "name": "库存项数"
+          },
+          "low_items": {
+            "name": "缺货项"
+          }
+        }
+      }
+    },
+    "todo": {
+      "todo": {
+        "name": "待办事项"
+      }
+    }
+  },
+  "services": {
+    "bind_entity": {
+      "name": "绑定实体到耗材",
+      "description": "将设备耗材实体绑定到耗材库中的耗材（按设备自动匹配或手动指定 consumable_id），写入对应类型条目的绑定列表；可选关联一个库存项。",
+      "fields": {
+        "entity_id": {
+          "name": "实体",
+          "description": "要绑定的设备耗材实体（如 sensor.filter_life）"
+        },
+        "consumable_id": {
+          "name": "耗材 ID",
+          "description": "要绑定的耗材，留空按设备自动匹配"
+        },
+        "item": {
+          "name": "关联库存项",
+          "description": "可选关联的库存项"
+        }
+      }
+    },
+    "query_binding": {
+      "name": "查询绑定",
+      "description": "查询实体与耗材的绑定关系（按实体、耗材或库存项过滤）。",
+      "fields": {
+        "entity_id": {
+          "name": "实体",
+          "description": "按实体过滤"
+        },
+        "consumable_id": {
+          "name": "耗材 ID",
+          "description": "按耗材过滤"
+        },
+        "item": {
+          "name": "库存项",
+          "description": "按库存项过滤"
+        }
+      }
+    },
+    "add_consumable": {
+      "name": "添加耗材到用户库",
+      "description": "按模板字段添加耗材，写入本地用户库（config/.consumable_manager/user_library.json，原子写盘）。耗材 ID 自动生成（类型+型号），如 filter_hepa13；冲突时链接内置条目或追加短哈希。",
+      "fields": {
+        "cons_type": {
+          "name": "耗材类型",
+          "description": "耗材类型（内置或自定义键）"
+        },
+        "model": {
+          "name": "型号",
+          "description": "型号（用于生成耗材 ID）"
+        },
+        "name": {
+          "name": "名称",
+          "description": "显示名称"
+        },
+        "unit": {
+          "name": "单位",
+          "description": "计量单位（如 个、片、毫升）"
+        },
+        "meta": {
+          "name": "规格信息",
+          "description": "可选规格（JSON 对象）"
+        }
+      }
+    },
+    "add_device": {
+      "name": "添加设备映射",
+      "description": "在本地用户库中新增或覆盖设备与耗材的映射关系（锚点：制造商 + 型号，重叠整条替换，原子写盘）。",
+      "fields": {
+        "manufacturer": {
+          "name": "制造商",
+          "description": "设备制造商"
+        },
+        "models": {
+          "name": "型号列表",
+          "description": "设备型号（JSON 字符串数组）"
+        },
+        "name": {
+          "name": "设备名称",
+          "description": "设备显示名称"
+        },
+        "consumables": {
+          "name": "耗材 ID 列表",
+          "description": "设备使用的耗材 ID（JSON 字符串数组）"
+        }
+      }
+    },
+    "add_type": {
+      "name": "添加自定义类型",
+      "description": "在本地用户库中新增自定义耗材类型（config/.consumable_manager/user_library.json，原子写盘）。类型键仅允许小写字母、数字与下划线且不可与已有类型重复（新建语义）；阈值字段与内置类型同构。",
+      "fields": {
+        "type_key": {
+          "name": "类型键",
+          "description": "类型键（小写字母、数字、下划线，必须唯一）"
+        },
+        "name": {
+          "name": "名称",
+          "description": "类型显示名称"
+        },
+        "icon": {
+          "name": "图标",
+          "description": "MDI 图标（默认 mdi:package-variant）"
+        },
+        "default_threshold_type": {
+          "name": "默认阈值类型",
+          "description": "新类型的默认阈值类型"
+        },
+        "default_threshold": {
+          "name": "默认阈值",
+          "description": "默认阈值数值"
+        },
+        "default_threshold_unit": {
+          "name": "默认阈值单位",
+          "description": "默认阈值单位"
+        }
+      }
+    },
+    "extract": {
+      "name": "提取数据",
+      "description": "提取条目的结构化数据（可指定数据项）。",
+      "fields": {
+        "include": {
+          "name": "数据项",
+          "description": "要包含的数据项（库存 / 耗材类型条目）"
+        }
+      }
+    },
+    "adjust_stock": {
+      "name": "调整库存",
+      "description": "增加或减少库存项数量（按库存项选择框选择）。",
+      "fields": {
+        "action": {
+          "name": "操作",
+          "description": "add 为增加，consume 为减少"
+        },
+        "quantity": {
+          "name": "数量",
+          "description": "增加或消耗的数量"
+        },
+        "item": {
+          "name": "库存项",
+          "description": "要调整的库存项"
+        }
+      }
+    }
+  }
+}

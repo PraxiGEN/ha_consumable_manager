@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "types": {
+    "battery": {
+      "name": "Battery",
+      "icon": "mdi:battery-outline",
+      "default_threshold_type": "lifetime_percent",
+      "default_threshold": 20,
+      "default_threshold_unit": "%"
+    },
+    "filter": {
+      "name": "Filter",
+      "icon": "mdi:air-filter",
+      "default_threshold_type": "lifetime_percent",
+      "default_threshold": 20,
+      "default_threshold_unit": "%"
+    },
+    "ink": {
+      "name": "Printer consumables",
+      "icon": "mdi:printer-outline",
+      "default_threshold_type": "lifetime_percent",
+      "default_threshold": 20,
+      "default_threshold_unit": "%"
+    },
+    "robot_vacuum": {
+      "name": "Robot vacuum parts",
+      "icon": "mdi:robot-vacuum",
+      "default_threshold_type": "used_time",
+      "default_threshold": 720,
+      "default_threshold_unit": "hours"
+    },
+    "water_purifier": {
+      "name": "Water purifier consumables",
+      "icon": "mdi:water-outline",
+      "default_threshold_type": "lifetime_percent",
+      "default_threshold": 20,
+      "default_threshold_unit": "%"
+    }
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "types": {
+    "battery": {
+      "zh-Hans": "无线设备（电池）",
+      "en": "Battery"
+    },
+    "filter": {
+      "zh-Hans": "净化设备滤芯",
+      "en": "Filter"
+    },
+    "ink": {
+      "zh-Hans": "打印机耗材",
+      "en": "Printer consumables"
+    },
+    "robot_vacuum": {
+      "zh-Hans": "扫地机耗材",
+      "en": "Robot vacuum parts"
+    },
+    "water_purifier": {
+      "zh-Hans": "净水器耗材",
+      "en": "Water purifier consumables"
+    }
+  },
+  "consumables": {
+    "battery_9v": {
+      "zh-Hans": "9V 方块电池",
+      "en": "9V battery"
+    },
+    "battery_aa": {
+      "zh-Hans": "5号电池 AA",
+      "en": "AA battery"
+    },
+    "battery_aaa": {
+      "zh-Hans": "7号电池 AAA",
+      "en": "AAA battery"
+    },
+    "battery_cr2032": {
+      "zh-Hans": "纽扣电池 CR2032",
+      "en": "Button cell CR2032"
+    },
+    "battery_cr2450": {
+      "zh-Hans": "纽扣电池 CR2450",
+      "en": "Button cell CR2450"
+    },
+    "filter_generic_pm25": {
+      "zh-Hans": "通用 PM2.5 滤芯",
+      "en": "Generic PM2.5 filter"
+    },
+    "filter_hepa13": {
+      "zh-Hans": "HEPA 13 滤芯",
+      "en": "HEPA 13 filter"
+    },
+    "ink_hp680_black": {
+      "zh-Hans": "HP 680 黑色墨盒",
+      "en": "HP 680 black ink cartridge"
+    },
+    "ink_hp680_color": {
+      "zh-Hans": "HP 680 彩色墨盒",
+      "en": "HP 680 tri-color ink cartridge"
+    },
+    "robot_vacuum_mop": {
+      "zh-Hans": "扫地机拖布",
+      "en": "Robot vacuum mop cloth"
+    },
+    "robot_vacuum_side_brush": {
+      "zh-Hans": "扫地机边刷",
+      "en": "Robot vacuum side brush"
+    },
+    "water_purifier_pp": {
+      "zh-Hans": "净水器 PP 棉滤芯",
+      "en": "PP sediment filter cartridge"
+    },
+    "water_purifier_ro": {
+      "zh-Hans": "净水器 RO 反渗透膜",
+      "en": "RO reverse osmosis membrane"
+    }
+  },
+  "devices": {
+    "hp_deskjet_2135": {
+      "zh-Hans": "惠普 DeskJet 2135 打印机",
+      "en": "HP DeskJet 2135 printer"
+    },
+    "hp_deskjet_2675": {
+      "zh-Hans": "惠普 DeskJet 2675 打印机",
+      "en": "HP DeskJet 2675 printer"
+    },
+    "hp_deskjet_4535": {
+      "zh-Hans": "惠普 DeskJet 4535 打印机",
+      "en": "HP DeskJet 4535 printer"
+    },
+    "philips_awp1700": {
+      "zh-Hans": "飞利浦净水机 AWP1700",
+      "en": "Philips water purifier AWP1700"
+    },
+    "roborock_roborock_vacuum_s5": {
+      "zh-Hans": "石头扫地机器人 S5",
+      "en": "Roborock S5 robot vacuum"
+    },
+    "roborock_rockrobo_vacuum_v1": {
+      "zh-Hans": "石头扫地机器人 S5",
+      "en": "Roborock S5 robot vacuum"
+    },
+    "sonoff_snzb_02": {
+      "zh-Hans": "SONOFF 温湿度传感器",
+      "en": "SONOFF temperature/humidity sensor"
+    },
+    "sonoff_snzb_03": {
+      "zh-Hans": "SONOFF 人体传感器",
+      "en": "SONOFF motion sensor"
+    },
+    "xiaomi_zhimi_airpurifier_m1": {
+      "zh-Hans": "米家空气净化器 1",
+      "en": "Mi Air Purifier 1"
+    },
+    "xiaomi_zhimi_airpurifier_m2": {
+      "zh-Hans": "米家空气净化器 2",
+      "en": "Mi Air Purifier 2"
+    },
+    "xiaomi_zhimi_airpurifier_m3": {
+      "zh-Hans": "米家空气净化器 3",
+      "en": "Mi Air Purifier 3"
+    }
+  }
+}

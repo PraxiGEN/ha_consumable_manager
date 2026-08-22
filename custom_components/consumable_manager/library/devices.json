@@ -1,0 +1,118 @@
+[
+  {
+    "manufacturer": "HP",
+    "models": [
+      "Deskjet 2135"
+    ],
+    "name": "HP DeskJet 2135 printer",
+    "consumables": [
+      "ink_hp680_black",
+      "ink_hp680_color"
+    ]
+  },
+  {
+    "manufacturer": "HP",
+    "models": [
+      "Deskjet 2675"
+    ],
+    "name": "HP DeskJet 2675 printer",
+    "consumables": [
+      "ink_hp680_black",
+      "ink_hp680_color"
+    ]
+  },
+  {
+    "manufacturer": "HP",
+    "models": [
+      "Deskjet 4535"
+    ],
+    "name": "HP DeskJet 4535 printer",
+    "consumables": [
+      "ink_hp680_black",
+      "ink_hp680_color"
+    ]
+  },
+  {
+    "manufacturer": "Philips",
+    "models": [
+      "AWP1700"
+    ],
+    "name": "Philips water purifier AWP1700",
+    "consumables": [
+      "water_purifier_pp",
+      "water_purifier_ro"
+    ]
+  },
+  {
+    "manufacturer": "Roborock",
+    "models": [
+      "roborock.vacuum.s5"
+    ],
+    "name": "Roborock S5 robot vacuum",
+    "consumables": [
+      "robot_vacuum_side_brush",
+      "robot_vacuum_mop"
+    ]
+  },
+  {
+    "manufacturer": "Roborock",
+    "models": [
+      "rockrobo.vacuum.v1"
+    ],
+    "name": "Roborock S5 robot vacuum",
+    "consumables": [
+      "robot_vacuum_side_brush",
+      "robot_vacuum_mop"
+    ]
+  },
+  {
+    "manufacturer": "SONOFF",
+    "models": [
+      "SNZB-02"
+    ],
+    "name": "SONOFF temperature/humidity sensor",
+    "consumables": [
+      "battery_cr2032"
+    ]
+  },
+  {
+    "manufacturer": "SONOFF",
+    "models": [
+      "SNZB-03"
+    ],
+    "name": "SONOFF motion sensor",
+    "consumables": [
+      "battery_cr2032"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airpurifier.m1"
+    ],
+    "name": "Mi Air Purifier 1",
+    "consumables": [
+      "filter_hepa13"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airpurifier.m2"
+    ],
+    "name": "Mi Air Purifier 2",
+    "consumables": [
+      "filter_hepa13"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airpurifier.m3"
+    ],
+    "name": "Mi Air Purifier 3",
+    "consumables": [
+      "filter_hepa13"
+    ]
+  }
+]
