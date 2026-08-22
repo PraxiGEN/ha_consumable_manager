@@ -140,10 +140,25 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
     item_id = _coerce_item_id(hass, call.data.get("item"))
     if not entity_id:
         raise ServiceValidationError("缺少 entity_id")
+    # 未手输耗材但选择了关联库存项 → 继承库存项已关联的 consumable_id
+    inherited = False
+    if not consumable_id and item_id:
+        stock = _find_stock_coordinator(hass)
+        if stock is not None:
+            item = next(
+                (i for i in stock.items
+                 if i.get(CONF_ITEM_ID) == item_id),
+                None,
+            )
+            if item is not None and item.get(CONF_CONSUMABLE_ID):
+                consumable_id = str(item[CONF_CONSUMABLE_ID])
+                inherited = True
     library = await async_load_library(hass)
     consumable, matched_by = await _resolve_consumable(
         hass, library, entity_id, consumable_id
     )
+    if inherited:
+        matched_by = "stock"
     coord = _find_type_coordinator(hass, consumable.cons_type)
     if coord is None:
         raise ServiceValidationError(
