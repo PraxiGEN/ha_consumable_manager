@@ -99,6 +99,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         self._prev_alert_status: str | None = None
         self._baseline_established: bool = False
         self.alert_pending: bool = False
+        self._unsub_state: Any | None = None
 
     @property
     def entry(self) -> ConfigEntry:
@@ -152,6 +153,18 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         self.hass.config_entries.async_update_entry(
             self._entry, options=options
         )
+
+    @callback
+    def async_subscribe(self) -> None:
+        """建立运行时订阅（子类按需重写；库存/通知条目不订阅）。"""
+        return
+
+    @callback
+    def async_unsubscribe(self) -> None:
+        """取消实体状态订阅（同步；定时轮询由父类 async_shutdown 清理）。"""
+        if self._unsub_state is not None:
+            self._unsub_state()
+            self._unsub_state = None
 
     # ---- 待办事项（存 dict，todo.py 负责转 TodoItem）----
     def todo_dicts(self) -> list[dict[str, Any]]:
@@ -778,10 +791,12 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             getattr(state, "name", None)
             or (state.attributes.get("friendly_name") if state else None)
         )
+        # 显示名取值：friendly_name 优先（用户自定义实体名），
+        # 其次设备注册表设备名，再次型号，最后实体 id。
         display = (
-            snapshot.get("device_name")
+            state_name
+            or snapshot.get("device_name")
             or snapshot.get("device_model")
-            or state_name
             or entity_id
         )
         return f"{display} {self._notify_text(NOTIFY_TEXT_REPLACE_NEEDED)}"
@@ -810,7 +825,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 or (state.attributes.get("friendly_name") if state else None)
             )
             snapshot = snapshots.get(eid, {})
-            display = snapshot.get("device_name") or state_name
+            display = state_name or snapshot.get("device_name")
             if display:
                 lines.append(
                     f"{self._notify_text(NOTIFY_TEXT_DESC_DEVICE)}"
@@ -921,15 +936,13 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 )
 
     # ---- 通知（需更换跳变：消息按样式生成）----
-    async def async_added_to_hass(self) -> None:
+    @callback
+    def async_subscribe(self) -> None:
         """订阅绑定实体状态变化，即时刷新（手动改值即时检测跳变通知）。"""
-        await super().async_added_to_hass()
         entities = self.source_entities
         if entities:
-            self.async_on_remove(
-                async_track_state_change_event(
-                    self.hass, list(entities), self._on_state_change
-                )
+            self._unsub_state = async_track_state_change_event(
+                self.hass, list(entities), self._on_state_change
             )
 
     @callback
@@ -959,10 +972,11 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 getattr(state, "name", None)
                 or (state.attributes.get("friendly_name") if state else None)
             )
+            # friendly_name 优先（用户自定义实体名），其次设备名/型号，最后实体 id
             display = (
-                snapshot.get("device_name")
+                state_name
+                or snapshot.get("device_name")
                 or snapshot.get("device_model")
-                or state_name
                 or entity_id
             )
             value_text = _to_float(value) if value is not None else None

@@ -114,7 +114,10 @@ async def async_setup_entry(hass: HomeAssistant,
     library = await async_load_library(hass)
     type_meta = library.type_meta(entry.data.get(CONF_ENTRY_TYPE, ""))
     coordinator = build_coordinator(hass, entry, labels, type_meta, library)
+    # 首次刷新建立数据基线；实体订阅使「改实体值」即时刷新，定时轮询由
+    # DataUpdateCoordinator 在实体加入监听时自动启动
     await coordinator.async_config_entry_first_refresh()
+    coordinator.async_subscribe()
     entry.runtime_data = ConsumableManagerData(
         coordinator=coordinator,
         entity_signature=coordinator.entity_signature,
@@ -145,5 +148,11 @@ async def async_update_listener(hass: HomeAssistant,
 async def async_unload_entry(hass: HomeAssistant,
     entry: ConsumableManagerConfigEntry,
 ) -> bool:
-    """卸载配置条目（平台卸载即完成清理）。"""
-    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    """卸载配置条目：卸载平台后停止协调器（实体订阅 + 定时轮询）。"""
+    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    if unload_ok:
+        coordinator = getattr(entry.runtime_data, "coordinator", None)
+        if coordinator is not None:
+            coordinator.async_unsubscribe()
+            await coordinator.async_shutdown()
+    return unload_ok
