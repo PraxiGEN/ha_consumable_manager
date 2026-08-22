@@ -342,12 +342,26 @@
         "item": {
           "name": "Linked stock item",
           "description": "Optional stock item to link"
+        },
+        "record_device": {
+          "name": "Record device mapping",
+          "description": "Also save the device-to-consumable mapping into the user library (merge, not overwrite)"
+        }
+      }
+    },
+    "unbind_entity": {
+      "name": "Unbind entity",
+      "description": "Remove an entity's binding to a consumable (undo a mis-binding).",
+      "fields": {
+        "entity_id": {
+          "name": "Entity",
+          "description": "Entity to unbind (e.g. sensor.filter_life)"
         }
       }
     },
     "query_binding": {
-      "name": "Query bindings",
-      "description": "Query binding relations (filter by entity, consumable or stock item).",
+      "name":  "Query bindings",
+      "description": "Query binding relations (filter by entity, consumable or stock item). When an entity_id is given, also returns the entity's device info (entity_info) and suggested consumables from the library (suggested) for binding.",
       "fields": {
         "entity_id": {
           "name": "Entity",

@@ -435,5 +435,85 @@ async def async_write_user_device(
     """异步入口：在 executor 中把设备映射写入用户库，返回写入的条目。"""
     path = user_library_path(hass)
     return await hass.async_add_executor_job(
-        write_user_device, path, manufacturer, models, name, consumables
+        write_user_device, path, manufacturer,  models, name, consumables
+    )
+
+def write_user_device_consumable(
+    path: Path,
+    manufacturer: str,
+    model: str,
+    consumable_id: str,
+    device_name: str | None = None,
+) -> dict[str, Any]:
+    """把耗材合并追加进用户库设备映射（按「厂商+型号」锚点，不覆盖既有 models/name/其他耗材）。
+
+    用于「绑定实体时顺带沉淀设备映射」：同一设备型号可能已记录多个耗材，
+    本函数只追加，绝不整条替换——避免误删已有映射。
+    """
+    manufacturer = (manufacturer or "").strip()
+    model = (model or "").strip()
+    consumable_id = (consumable_id or "").strip()
+    if not manufacturer or not model or not consumable_id:
+        raise LibraryError("写入设备映射缺少 厂商/型号/耗材")
+    builtin = load_library()
+    data = _load_user_data(path)
+    known_ids: set[str] = {c.id for c in builtin.consumables}
+    known_ids.update(
+        c.get("id")
+        for c in data["consumables"]
+        if isinstance(c, dict) and isinstance(c.get("id"), str)
+    )
+    if consumable_id not in known_ids:
+        raise LibraryError(f"未知耗材 {consumable_id}，无法写入用户库设备映射")
+    new_anchor = (manufacturer.lower(), model.lower())
+    existing: dict[str, Any] | None = None
+    for dev in data.get("devices", []):
+        if isinstance(dev, dict) and new_anchor in _raw_device_anchors(dev):
+            existing = dev
+            break
+    if existing is not None:
+        merged_consumables = list(dict.fromkeys(
+            [*(existing.get("consumables") or []), consumable_id]
+        ))
+        merged_models = list(dict.fromkeys(
+            [*(existing.get("models") or []), model]
+        ))
+        name = existing.get("name") or device_name or manufacturer
+        entry = {
+            "manufacturer": existing.get("manufacturer") or manufacturer,
+            "models": merged_models,
+            "name": name,
+            "consumables": merged_consumables,
+        }
+    else:
+        entry = {
+            "manufacturer": manufacturer,
+            "models": [model],
+            "name": device_name or manufacturer,
+            "consumables": [consumable_id],
+        }
+    new_anchors = _raw_device_anchors(entry)
+    devices = [
+        dev
+        for dev in data["devices"]
+        if not isinstance(dev, dict)
+        or not (_raw_device_anchors(dev) & new_anchors)
+    ]
+    devices.append(entry)
+    data["devices"] = devices
+    _atomic_write_json(path, data)
+    return entry
+
+async def async_write_user_device_consumable(
+    hass: HomeAssistant,
+    manufacturer: str,
+    model: str,
+    consumable_id: str,
+    device_name: str | None = None,
+) -> dict[str, Any]:
+    """异步入口：在 executor 中把耗材合并追加进用户库设备映射。"""
+    path = user_library_path(hass)
+    return await hass.async_add_executor_job(
+        write_user_device_consumable, path, manufacturer, model,
+        consumable_id, device_name
     )

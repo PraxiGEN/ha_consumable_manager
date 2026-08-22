@@ -342,12 +342,26 @@
         "item": {
           "name": "关联库存项",
           "description": "可选关联的库存项"
+        },
+        "record_device": {
+          "name": "记入设备映射",
+          "description": "同时将「厂商+型号→耗材」合并追加进用户库设备映射（不覆盖既有）"
+        }
+      }
+    },
+    "unbind_entity": {
+      "name": "解除绑定",
+      "description": "移除实体到耗材的绑定（用于纠正误绑）。",
+      "fields": {
+        "entity_id": {
+          "name": "实体",
+          "description": "要解除绑定的实体（如 sensor.filter_life）"
         }
       }
     },
     "query_binding": {
       "name": "查询绑定",
-      "description": "查询实体与耗材的绑定关系（按实体、耗材或库存项过滤）。",
+      "description": "查询实体与耗材的绑定关系（按实体、耗材或库存项过滤）。传入 entity_id 时，额外返回该实体的设备信息（entity_info）与库内推荐耗材（suggested），便于绑定前查询。",
       "fields": {
         "entity_id": {
           "name": "实体",

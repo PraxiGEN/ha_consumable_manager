@@ -24,6 +24,24 @@ bind_entity:
         entity:
           domain: sensor
           integration: consumable_manager
+    record_device:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        boolean: {}
+
+unbind_entity:
+  name: "{{ name }}"
+  description: "{{ description }}"
+  fields:
+    entity_id:
+      required: true
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: sensor.filter_life
+      selector:
+        entity: {}
 
 query_binding:
   name: "{{ name }}"
