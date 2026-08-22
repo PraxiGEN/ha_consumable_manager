@@ -140,24 +140,49 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
     item_id = _coerce_item_id(hass, call.data.get("item"))
     if not entity_id:
         raise ServiceValidationError("缺少 entity_id")
+    # 未手输耗材但选择了关联库存项 → 继承库存项已关联的 consumable_id
+    inherited = False
+    if not consumable_id and item_id:
+        stock = _find_stock_coordinator(hass)
+        if stock is not None:
+            item = next(
+                (i for i in stock.items
+                 if i.get(CONF_ITEM_ID) == item_id),
+                None,
+            )
+            if item is not None and item.get(CONF_CONSUMABLE_ID):
+                consumable_id = str(item[CONF_CONSUMABLE_ID])
+                inherited = True
     library = await async_load_library(hass)
     consumable, matched_by = await _resolve_consumable(
         hass, library, entity_id, consumable_id
     )
+    if inherited:
+        matched_by = "stock"
     coord = _find_type_coordinator(hass, consumable.cons_type)
     if coord is None:
         raise ServiceValidationError(
             f"尚未添加「{consumable.cons_type}」类型的集成条目，"
             "请先在集成中添加该类型"
         )
-    if entity_id not in coord.source_entities:
-        options = dict(coord.options)
-        options[CONF_SOURCE_ENTITIES] = (
-            coord.source_snapshots
-            + build_source_snapshots(hass, [entity_id])
-        )
-        hass.config_entries.async_update_entry(coord.entry, options=options)
-        await coord.async_request_refresh()
+    # 把解析到的具体耗材 id 写入快照，供「查询绑定」回显耗材型号
+    options = dict(coord.options)
+    existing = coord.source_snapshots
+    new_snap = build_source_snapshots(hass, [entity_id])[0]
+    new_snap["consumable_id"] = consumable.id
+    if entity_id in coord.source_entities:
+        # 已绑定：更新既有快照的耗材型号（重绑场景）
+        merged: list[dict[str, Any]] = []
+        for s in existing:
+            if s.get("entity_id") == entity_id:
+                merged.append({**s, "consumable_id": consumable.id})
+            else:
+                merged.append(s)
+        options[CONF_SOURCE_ENTITIES] = merged
+    else:
+        options[CONF_SOURCE_ENTITIES] = existing + [new_snap]
+    hass.config_entries.async_update_entry(coord.entry, options=options)
+    await coord.async_request_refresh()
 
     if item_id:
         _link_stock_item(hass, item_id, consumable)
@@ -200,10 +225,22 @@ async def async_query_binding(hass: HomeAssistant,
             sid = snapshot.get("entity_id")
             if entity_id and sid != entity_id:
                 continue
+            # 回显绑定的具体耗材（型号 / 名称）
+            cid = snapshot.get("consumable_id")
+            cmodel = None
+            cname = None
+            if cid:
+                consumable = library.get(cid)
+                if consumable is not None:
+                    cmodel = consumable.model
+                    cname = consumable.display_name(hass.config.language)
             bindings.append(
                 {
                     "entry_type": coord.cons_type,
                     "entity_id": sid,
+                    "consumable_id": cid,
+                    "consumable_model": cmodel,
+                    "consumable_name": cname,
                     "device_name": snapshot.get("device_name"),
                     "device_model": snapshot.get("device_model"),
                     "manufacturer": snapshot.get("manufacturer"),
