@@ -75,7 +75,7 @@
     "notify_text": {
       "options": {
         "low_stock": "库存告急，请购买。",
-        "replace_needed": "请更换耗材。",
+        "replace_needed": "需要更换耗材。",
         "last_replaced": "上次更换",
         "consumables": "耗材",
         "desc_area": "区域",

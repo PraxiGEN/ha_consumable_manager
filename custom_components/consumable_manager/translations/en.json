@@ -75,7 +75,7 @@
     "notify_text": {
       "options": {
         "low_stock": "out of stock, please restock.",
-        "replace_needed": "Please replace the consumable.",
+        "replace_needed": "Replace the consumable.",
         "last_replaced": "Last replaced",
         "consumables": "Consumables",
         "desc_area": "Area",

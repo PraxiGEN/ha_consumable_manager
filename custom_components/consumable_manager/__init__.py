@@ -31,7 +31,7 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 def _async_labels(hass: HomeAssistant) -> dict[str, str]:
     """运行文案标签（翻译缓存；todo_kind + notify_text 共用一张表）。"""
     translations = translation.async_get_cached_translations(
-        hass, hass.config.language, "selector"
+        hass, hass.config.language, "selector", integration=DOMAIN
     )
     labels: dict[str, str] = {}
     for kind in TODO_KINDS:

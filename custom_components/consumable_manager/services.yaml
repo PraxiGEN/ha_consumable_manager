@@ -8,7 +8,8 @@ bind_entity:
       description: "{{ description }}"
       example: sensor.filter_life
       selector:
-        entity: {}
+        entity:
+          domain: sensor
     consumable_id:
       required: false
       name: "{{ name }}"
@@ -41,7 +42,8 @@ unbind_entity:
       description: "{{ description }}"
       example: sensor.filter_life
       selector:
-        entity: {}
+        entity:
+          domain: sensor
 
 query_binding:
   name: "{{ name }}"
@@ -53,7 +55,8 @@ query_binding:
       description: "{{ description }}"
       example: sensor.filter_life
       selector:
-        entity: {}
+        entity:
+          domain: sensor
     consumable_id:
       required: false
       name: "{{ name }}"
