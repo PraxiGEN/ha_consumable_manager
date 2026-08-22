@@ -61,7 +61,6 @@
     },
     "threshold_unit": {
       "options": {
-        "%": "百分比",
         "days": "天",
         "hours": "小时",
         "minutes": "分钟"
@@ -74,10 +73,24 @@
       }
     },
     "notify_text": {
-      "low_stock": "库存告急，请购买。",
-      "replace_needed": "电量低，请更换。",
-      "last_replaced": "上次更换：",
-      "consumables": "耗材："
+      "options": {
+        "low_stock": "库存告急，请购买。",
+        "replace_needed": "电量低，请更换。",
+        "last_replaced": "上次更换：",
+        "consumables": "耗材："
+      }
+    },
+    "notify_mode": {
+      "options": {
+        "realtime": "实时推送（触发即推送）",
+        "scheduled": "定时统一推送（每天固定时刻合并推送）"
+      }
+    },
+    "notify_style": {
+      "options": {
+        "human": "人性化文案",
+        "value": "状态值"
+      }
     },
     "add_method": {
       "options": {
@@ -170,12 +183,6 @@
           "style": "消息样式",
           "mode": "推送模式",
           "schedule_time": "定时推送时刻（仅定时模式生效；条目级留空则跟随全局时刻）"
-        },
-        "options": {
-          "realtime": "实时推送（触发即推送）",
-          "scheduled": "定时统一推送（每天固定时刻合并推送）",
-          "human": "人性化文案",
-          "value": "状态值"
         }
       },
       "remove_items": {
@@ -251,7 +258,6 @@
           "threshold_unit": {
             "name": "单位",
             "state": {
-              "%": "百分比",
               "days": "天",
               "hours": "小时",
               "minutes": "分钟"

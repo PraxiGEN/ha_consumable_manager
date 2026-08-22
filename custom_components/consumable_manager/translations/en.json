@@ -61,7 +61,6 @@
     },
     "threshold_unit": {
       "options": {
-        "%": "Percent",
         "days": "Days",
         "hours": "Hours",
         "minutes": "Minutes"
@@ -74,10 +73,24 @@
       }
     },
     "notify_text": {
-      "low_stock": "out of stock, please restock.",
-      "replace_needed": "low on power, please replace.",
-      "last_replaced": "Last replaced: ",
-      "consumables": "Consumables: "
+      "options": {
+        "low_stock": "out of stock, please restock.",
+        "replace_needed": "low on power, please replace.",
+        "last_replaced": "Last replaced: ",
+        "consumables": "Consumables: "
+      }
+    },
+    "notify_mode": {
+      "options": {
+        "realtime": "Realtime (push on trigger)",
+        "scheduled": "Scheduled (merge and push at a fixed time daily)"
+      }
+    },
+    "notify_style": {
+      "options": {
+        "human": "Human wording",
+        "value": "Raw value"
+      }
     },
     "add_method": {
       "options": {
@@ -170,12 +183,6 @@
           "style": "Message style",
           "mode": "Push mode",
           "schedule_time": "Scheduled push time (scheduled mode only; leave empty on an entry to follow the global time)"
-        },
-        "options": {
-          "realtime": "Realtime (push on trigger)",
-          "scheduled": "Scheduled (merge and push at a fixed time daily)",
-          "human": "Human wording",
-          "value": "Raw value"
         }
       },
       "remove_items": {
@@ -251,7 +258,6 @@
           "threshold_unit": {
             "name": "Unit",
             "state": {
-              "%": "Percent",
               "days": "Days",
               "hours": "Hours",
               "minutes": "Minutes"

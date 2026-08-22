@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import event, translation
+from homeassistant.helpers import config_validation as cv, event, translation
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util import dt as dt_util
 
@@ -25,6 +25,9 @@ from .user_library import async_load_library
 # 全集成统一的强类型条目别名（PEP 695），所有模块从本包导入
 type ConsumableManagerConfigEntry = ConfigEntry[ConsumableManagerData]
 
+# 仅支持界面配置（无 YAML 配置项），消除 hassfest CONFIG_SCHEMA 警告
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 def _async_labels(hass: HomeAssistant) -> dict[str, str]:
     """运行文案标签（翻译缓存；todo_kind + notify_text 共用一张表）。"""
     translations = translation.async_get_cached_translations(
@@ -37,7 +40,7 @@ def _async_labels(hass: HomeAssistant) -> dict[str, str]:
         )
     for key in NOTIFY_TEXTS:
         labels[key] = translations.get(
-            f"component.{DOMAIN}.selector.notify_text.{key}", key
+            f"component.{DOMAIN}.selector.notify_text.options.{key}", key
         )
     return labels
 

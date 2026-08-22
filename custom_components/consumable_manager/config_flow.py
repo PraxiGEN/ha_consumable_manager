@@ -607,22 +607,25 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
         translations = await translation.async_get_translations(
             self.hass,
             self.hass.config.language,
-            "options",
+            "selector",
             integrations=[DOMAIN],
         )
-        option_prefix = (
-            f"component.{DOMAIN}.options.step.notification.options."
+        style_prefix = (
+            f"component.{DOMAIN}.selector.notify_style.options."
+        )
+        mode_prefix = (
+            f"component.{DOMAIN}.selector.notify_mode.options."
         )
         style_options = [
             {
-                "label": translations.get(f"{option_prefix}{style}", style),
+                "label": translations.get(f"{style_prefix}{style}", style),
                 "value": style,
             }
             for style in NOTIFY_STYLES
         ]
         mode_options = [
             {
-                "label": translations.get(f"{option_prefix}{mode}", mode),
+                "label": translations.get(f"{mode_prefix}{mode}", mode),
                 "value": mode,
             }
             for mode in NOTIFY_MODES
