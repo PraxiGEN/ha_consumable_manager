@@ -30,7 +30,8 @@ from .const import (
     NOTIFY_TEXT_LAST_REPLACED,
     NOTIFY_TEXT_LOW_STOCK, NOTIFY_TEXT_REPLACE_NEEDED, NOTIFY_TEXT_UNKNOWN,
     OPERATOR_EQUAL, OPERATOR_GREATER_THAN, OPERATOR_LESS_THAN, THRESHOLD_DEFAULT_OPERATOR,
-    THRESHOLD_TYPE_LIFETIME_PERCENT, TIME_UNIT_TO_HOURS, TODO_KIND_PURCHASE, TODO_KIND_REPLACE,
+    THRESHOLD_TYPE_LIFETIME_PERCENT, THRESHOLD_TYPE_NUMERIC, TIME_UNIT_TO_HOURS,
+    TODO_KIND_PURCHASE, TODO_KIND_REPLACE,
 )
 from .library import Library, TypeMeta
 from .notifications import (
@@ -67,8 +68,10 @@ def evaluate_threshold(threshold_type: str,
     """判断是否越过阈值（纯函数，便于单元测试）。"""
     if threshold is None:
         return False
-    # 单位换算：时间类换算到小时（内部标准单位），剩余寿命% 不换算
-    if unit is not None and threshold_type != THRESHOLD_TYPE_LIFETIME_PERCENT:
+    # 单位换算：时间类换算到小时（内部标准单位），剩余寿命% / 数值类不换算
+    if unit is not None and threshold_type not in (
+        THRESHOLD_TYPE_LIFETIME_PERCENT, THRESHOLD_TYPE_NUMERIC
+    ):
         threshold = threshold * TIME_UNIT_TO_HOURS.get(unit, 1.0)
     for value in values:
         if value is None:

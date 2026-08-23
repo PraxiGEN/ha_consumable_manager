@@ -55,6 +55,7 @@
     "threshold_type": {
       "options": {
         "lifetime_percent": "剩余寿命（%）",
+        "numeric": "数值",
         "remaining_time": "剩余时间",
         "used_time": "已使用时长"
       }
@@ -63,7 +64,8 @@
       "options": {
         "days": "天",
         "hours": "小时",
-        "minutes": "分钟"
+        "minutes": "分钟",
+        "numeric": "数值"
       }
     },
     "todo_kind": {
@@ -257,6 +259,7 @@
             "name": "阈值类型",
             "state": {
               "lifetime_percent": "剩余寿命（%）",
+              "numeric": "数值",
               "remaining_time": "剩余时间",
               "used_time": "已使用时长"
             }
@@ -265,6 +268,7 @@
             "name": "单位",
             "state": {
               "days": "天",
+              "numeric": "数值",
               "hours": "小时",
               "minutes": "分钟"
             }

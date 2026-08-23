@@ -55,6 +55,7 @@
     "threshold_type": {
       "options": {
         "lifetime_percent": "Remaining lifetime (%)",
+        "numeric": "Numeric",
         "remaining_time": "Remaining time",
         "used_time": "Used time"
       }
@@ -63,7 +64,8 @@
       "options": {
         "days": "Days",
         "hours": "Hours",
-        "minutes": "Minutes"
+        "minutes": "Minutes",
+        "numeric": "Numeric"
       }
     },
     "todo_kind": {
@@ -257,6 +259,7 @@
             "name": "Threshold type",
             "state": {
               "lifetime_percent": "Remaining lifetime (%)",
+              "numeric": "Numeric",
               "remaining_time": "Remaining time",
               "used_time": "Used time"
             }
@@ -265,6 +268,7 @@
             "name": "Unit",
             "state": {
               "days": "Days",
+              "numeric": "Numeric",
               "hours": "Hours",
               "minutes": "Minutes"
             }
