@@ -35,17 +35,20 @@ CONF_LAST_ALERT_STATUS: Final = "last_alert_status"  # 上次告警态（持久�
 
 # 阈值类型：由绑定实体的语义决定
 THRESHOLD_TYPE_LIFETIME_PERCENT: Final = "lifetime_percent"  # 剩余寿命（%）
+THRESHOLD_TYPE_NUMERIC: Final = "numeric"  # 数值（实体 state 本身即数值，无单位换算）
 THRESHOLD_TYPE_REMAINING_TIME: Final = "remaining_time"  # 剩余时间（时间单位）
 THRESHOLD_TYPE_USED_TIME: Final = "used_time"  # 已使用时长（时间单位）
 
 THRESHOLD_TYPES: Final[tuple[str, ...]] = (
     THRESHOLD_TYPE_LIFETIME_PERCENT,
+    THRESHOLD_TYPE_NUMERIC,
     THRESHOLD_TYPE_REMAINING_TIME,
     THRESHOLD_TYPE_USED_TIME,
 )
 
 # 阈值单位
 UNIT_PERCENT: Final = "%"
+UNIT_NUMERIC: Final = "numeric"  # 数值（与 type=numeric 搭配，无换算）
 UNIT_MINUTES: Final = "minutes"
 UNIT_HOURS: Final = "hours"
 UNIT_DAYS: Final = "days"
@@ -65,6 +68,7 @@ DEFAULT_THRESHOLD_UNIT: Final = UNIT_PERCENT
 # 单位下拉固定选项（所有单位，因表单静态、切换类型后选项不变）
 THRESHOLD_UNIT_OPTIONS: Final[tuple[str, ...]] = (
     UNIT_PERCENT,
+    UNIT_NUMERIC,
     UNIT_MINUTES,
     UNIT_HOURS,
     UNIT_DAYS,
@@ -84,6 +88,7 @@ OPERATORS: Final[tuple[str, ...]] = (
 # 各阈值类型默认计算方式
 THRESHOLD_DEFAULT_OPERATOR: Final[dict[str, str]] = {
     THRESHOLD_TYPE_LIFETIME_PERCENT: OPERATOR_LESS_THAN,
+    THRESHOLD_TYPE_NUMERIC: OPERATOR_LESS_THAN,
     THRESHOLD_TYPE_REMAINING_TIME: OPERATOR_LESS_THAN,
     THRESHOLD_TYPE_USED_TIME: OPERATOR_GREATER_THAN,
 }
