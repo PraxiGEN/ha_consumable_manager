@@ -190,6 +190,9 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         # 首次基线标记：setup 期刷新后翻转 True，运行期才持久化（避免 setup 写 options 死循环）
         self._baseline_established: bool = False
         self.alert_pending: bool = False
+        # 群组展开后的叶子实体缓存：评估阶段一次性重算，下游统一读取
+        # （None = 尚未解析，首次访问时即时展开兜底）
+        self._resolved_entities: list[str] | None = None
 
     @property
     def _trigger_kind(self) -> Literal["replace", "low_stock"]:
@@ -667,7 +670,6 @@ class StockCoordinator(BaseCoordinator):
         newly_resolved: tuple[str, ...],
     ) -> None:
         """每个低库存项独立一条购买待办；补齐后该条自动完成。"""
-        purchase_prefix = f"{self._entry.entry_id}_{TODO_KIND_PURCHASE}_"
         # 0. 内存恢复兜底：当前触发但缺 needs_action 待办 → 补建
         if (
             self._current_triggered is not None
@@ -800,8 +802,16 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return result
 
     def resolved_source_entities(self) -> list[str]:
-        """绑定实体展开群组后的实际实体（每次调用重新解析，动态跟随）。"""
-        return self._expand_groups(self.source_entities)
+        """解析后的实际实体 ID 列表（群组已层层展开为叶子实体）。
+
+        群组只是「获取内部实体 ID」的手段：绑定 group.xxx 后，在评估阶段
+        一次性递归展开成叶子实体并缓存；后续检测 / 待办 / 通知 / 订阅全部
+        统一使用这份列表，不再重复动态展开。群组成员增减由 group 状态变化
+        触发刷新 → 评估阶段重算缓存（动态跟随）。
+        """
+        if self._resolved_entities is None:
+            self._resolved_entities = self._expand_groups(self.source_entities)
+        return list(self._resolved_entities)
 
     def bound_values(self) -> list[float | None]:
         """读取实际实体的实时值（缺失 / 不可用返回 None）。
@@ -891,7 +901,12 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return "replace"
 
     def _compute_triggered(self) -> TriggeredSet:
-        """更换触发集合评估：沿用现有 triggered_entities 评估逻辑（零变化数据源）。"""
+        """更换触发集合评估：评估阶段唯一入口。
+
+        先重算「群组展开后的叶子实体列表」（唯一展开点，缓存供下游统一
+        读取），再逐个评估阈值。
+        """
+        self._resolved_entities = self._expand_groups(self.source_entities)
         return TriggeredSet(
             kind="replace",
             members=tuple(self._eval_triggered_entities()),
@@ -1172,7 +1187,9 @@ class ConsumableTypeCoordinator(BaseCoordinator):
           分支 → 待办丢失。此处对当前所有触发成员做「缺 needs_action 则补建」
           的兜底，保证即使 reload 后也有完整待办。
         """
-        bound = set(self.source_entities)
+        # 解绑清理用「展开后的实际实体集合」：绑定群组（group.xxx → 成员）时，
+        # 触发成员待办不应被误判为「已解绑」而删除。
+        bound = set(self.resolved_source_entities())
         replace_prefix = self._auto_uid(TODO_KIND_REPLACE) + "_"
         # 0. 内存恢复兜底：当前触发但缺 needs_action 待办 → 补建
         if (
@@ -1222,13 +1239,18 @@ class ConsumableTypeCoordinator(BaseCoordinator):
     def async_subscribe(self) -> Callable[[], None] | None:
         """订阅绑定实体状态变化，即时刷新（手动改值即时检测跳变通知）。
 
+        群组绑定场景：同时订阅 group 本身与展开后的成员，成员值变化也能
+        即时触发刷新（不依赖 60s 轮询兜底）。
         返回取消订阅回调；无绑定实体时返回 None（由调用方按需注册）。
         """
-        entities = self.source_entities
+        entities = list(
+            set(self.source_entities)
+            | set(self.resolved_source_entities())
+        )
         if not entities:
             return None
         return async_track_state_change_event(
-            self.hass, list(entities), self._on_state_change
+            self.hass, entities, self._on_state_change
         )
 
     @callback
