@@ -4,7 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone, timedelta
 import json
-from typing import Any, Final, Literal
+from typing import Any, Callable, Final, Literal
 from uuid import uuid4
 
 from homeassistant.config_entries import ConfigEntry
@@ -31,7 +31,8 @@ from .const import (
     NOTIFY_TEXT_LAST_REPLACED,
     NOTIFY_TEXT_LOW_STOCK, NOTIFY_TEXT_REPLACE_NEEDED, NOTIFY_TEXT_UNKNOWN,
     OPERATOR_EQUAL, OPERATOR_GREATER_THAN, OPERATOR_LESS_THAN, THRESHOLD_DEFAULT_OPERATOR,
-    THRESHOLD_TYPE_LIFETIME_PERCENT, THRESHOLD_TYPE_NUMERIC, TIME_UNIT_TO_HOURS,
+    THRESHOLD_TYPE_LIFETIME_PERCENT, THRESHOLD_TYPE_NUMERIC,
+    THRESHOLD_TYPE_REMAINING_TIME, THRESHOLD_TYPE_USED_TIME, TIME_UNIT_TO_HOURS,
     TODO_KIND_PURCHASE, TODO_KIND_REPLACE,
 )
 from .library import Library, TypeMeta
@@ -132,6 +133,14 @@ def _to_float(value: str | float | int | None) -> float | None:
     except (TypeError, ValueError):
         return None
 
+# 实体 unit_of_measurement → 小时 换算系数（HA 标准时间单位 + 集成自定义单位回退）
+_TIME_UOM_TO_HOURS: Final[dict[str, float]] = {
+    "h": 1.0, "hour": 1.0, "hours": 1.0,
+    "min": 1 / 60, "minute": 1 / 60, "minutes": 1 / 60,
+    "s": 1 / 3600, "second": 1 / 3600, "seconds": 1 / 3600,
+    "d": 24.0, "day": 24.0, "days": 24.0,
+}
+
 def evaluate_threshold(threshold_type: str,
     threshold: float | None,
     operator: str,
@@ -181,7 +190,6 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         # 首次基线标记：setup 期刷新后翻转 True，运行期才持久化（避免 setup 写 options 死循环）
         self._baseline_established: bool = False
         self.alert_pending: bool = False
-        self._unsub_state: Any | None = None
 
     @property
     def _trigger_kind(self) -> Literal["replace", "low_stock"]:
@@ -251,16 +259,13 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         )
 
     @callback
-    def async_subscribe(self) -> None:
-        """建立运行时订阅（子类按需重写；库存/通知条目不订阅）。"""
-        return
+    def async_subscribe(self) -> Callable[[], None] | None:
+        """建立运行时订阅（子类按需重写；库存/通知条目不订阅）。
 
-    @callback
-    def async_unsubscribe(self) -> None:
-        """取消实体状态订阅（同步；定时轮询由父类 async_shutdown 清理）。"""
-        if self._unsub_state is not None:
-            self._unsub_state()
-            self._unsub_state = None
+        返回取消订阅回调；由 async_setup_entry 通过 entry.async_on_unload
+        统一注册清理，避免分散的取消逻辑与潜在内存泄漏。
+        """
+        return None
 
     # ---- 待办事项（存 dict，todo.py 负责转 TodoItem）----
     def todo_dicts(self) -> list[dict[str, Any]]:
@@ -342,10 +347,26 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         for uid in uids:
             self._todos.pop(uid, None)
 
+    def get_todo_status(self, uid: str) -> str | None:
+        """读取待办状态（公开接口，供 todo 平台查询原状态避免破坏封装）。"""
+        todo = self._todos.get(uid)
+        return todo["status"] if todo else None
+
     @callback
-    def async_set_todo_due(self, uid: str, due: date | datetime | None) -> None:
-        if uid in self._todos:
-            self._todos[uid]["due"] = due
+    def async_update_todo_fields(self,
+        uid: str,
+        **fields: Any,
+    ) -> None:
+        """按字段更新待办（仅覆盖传入的非 None 字段，未传字段保留原值）。
+
+        供 todo 平台 async_update_todo_item 调用：HA 允许部分字段更新，
+        此处仅写入显式传入的字段，避免误清空原值。
+        """
+        if uid not in self._todos:
+            return
+        for key, value in fields.items():
+            if value is not None:
+                self._todos[uid][key] = value
 
     @callback
     def async_on_todo_completed(self,
@@ -364,11 +385,12 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         newly_resolved: tuple[str, ...],
     ) -> None:
         """按差集同步自动待办（子类按需重写，默认无自动待办）。"""
+        _ = newly_triggered, newly_resolved
         return
 
     # ---- 通知（基于触发集合差集）----
-    def _alert_text(self, style: str) -> str:
-        """按样式生成告警消息文案（子类按需重写）。"""
+    def alert_text(self, style: str) -> str:
+        """按样式生成告警消息文案（公开接口，供通知平台与定时合并推送调用）。"""
         return self.title
 
     async def _async_send_alert(self,
@@ -387,7 +409,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
             self.hass,
             config,
             self.title,
-            self._alert_text(
+            self.alert_text(
                 config.get(CONF_NOTIFY_STYLE, NOTIFY_STYLE_HUMAN)
             ),
             notification_id=f"{DOMAIN}_{sanitize_notification_id(self.entry_id)}",
@@ -646,6 +668,21 @@ class StockCoordinator(BaseCoordinator):
     ) -> None:
         """每个低库存项独立一条购买待办；补齐后该条自动完成。"""
         purchase_prefix = f"{self._entry.entry_id}_{TODO_KIND_PURCHASE}_"
+        # 0. 内存恢复兜底：当前触发但缺 needs_action 待办 → 补建
+        if (
+            self._current_triggered is not None
+            and self._current_triggered.kind == "low_stock"
+        ):
+            for item_id in self._current_triggered.members:
+                uid = self._auto_uid(TODO_KIND_PURCHASE, item_id)
+                existing = self._todos.get(uid)
+                if existing is None or existing["status"] != TODO_STATUS_NEEDS_ACTION:
+                    self._upsert_auto_todo(
+                        uid,
+                        f"{self._label(TODO_KIND_PURCHASE)} {self.item_name(item_id)}",
+                        TODO_STATUS_NEEDS_ACTION,
+                        self._purchase_description(item_id),
+                    )
         # 1. 新增触发：创建或回弹为 needs_action
         for item_id in newly_triggered:
             uid = self._auto_uid(TODO_KIND_PURCHASE, item_id)
@@ -670,7 +707,7 @@ class StockCoordinator(BaseCoordinator):
         # 3. 清理升级遗留的合并版待办（无后缀的旧格式）
         self._todos.pop(self._auto_uid(TODO_KIND_PURCHASE), None)
 
-    def _alert_text(self, style: str) -> str:
+    def alert_text(self, style: str) -> str:
         """按样式生成消息文案（多低库存项逐行）。"""
         lines: list[str] = []
         low_ids: list[str]
@@ -767,14 +804,32 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return self._expand_groups(self.source_entities)
 
     def bound_values(self) -> list[float | None]:
-        """读取实际实体的实时值（缺失 / 不可用返回 None）。"""
+        """读取实际实体的实时值（缺失 / 不可用返回 None）。
+
+        时间类阈值类型下，按实体 unit_of_measurement 换算为小时
+        （与 evaluate_threshold 内部 threshold→小时换算口径一致，
+        避免「阈值换算、value 不换算」的单位不对称误判）；
+        非时间类型 / 无可识别单位实体保持原值（向后兼容）。
+        """
+        convert = self.threshold_type in (
+            THRESHOLD_TYPE_REMAINING_TIME, THRESHOLD_TYPE_USED_TIME
+        )
         values: list[float | None] = []
         for entity_id in self.resolved_source_entities():
             state = self.hass.states.get(entity_id)
             if state is None or state.state in ("unknown", "unavailable", None):
                 values.append(None)
                 continue
-            values.append(_to_float(state.state))
+            raw = _to_float(state.state)
+            if raw is None:
+                values.append(None)
+                continue
+            if convert:
+                uom = state.attributes.get("unit_of_measurement")
+                factor = _TIME_UOM_TO_HOURS.get(str(uom)) if uom else None
+                if factor is not None:
+                    raw = raw * factor
+            values.append(raw)
         return values
 
     def triggered_entities(self) -> list[str]:
@@ -1103,16 +1158,37 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         newly_triggered: tuple[str, ...],
         newly_resolved: tuple[str, ...],
     ) -> None:
-        """每个触发实体各生成一条「更换」待办（差集驱动）。
+        """每个触发实体各生成一条「更换」待办（差集驱动 + 内存恢复兜底）。
 
         用差集直接定位：
         - newly_triggered：本轮新增越过阈值的 entity_id → needs_action
         - newly_resolved：本轮恢复正常的 entity_id → completed
         现有仍低库存的项保持 needs_action（无需再循环遍历 triggered）。
         「实体解绑删除遗留待办」仍然保留（独立于差集的 bound 集合扫描）。
+
+        内存恢复兜底（= 差集外补建）：
+          HA 重启 / reload 后 _todos 内存被清空，但 CONF_LAST_TRIGGERED_SIG
+          已持久化 → new-old 差集为空 → 已触发实体走不到 newly_triggered
+          分支 → 待办丢失。此处对当前所有触发成员做「缺 needs_action 则补建」
+          的兜底，保证即使 reload 后也有完整待办。
         """
         bound = set(self.source_entities)
         replace_prefix = self._auto_uid(TODO_KIND_REPLACE) + "_"
+        # 0. 内存恢复兜底：当前触发但缺 needs_action 待办 → 补建
+        if (
+            self._current_triggered is not None
+            and self._current_triggered.kind == "replace"
+        ):
+            for entity_id in self._current_triggered.members:
+                uid = self._auto_uid(TODO_KIND_REPLACE, entity_id)
+                existing = self._todos.get(uid)
+                if existing is None or existing["status"] != TODO_STATUS_NEEDS_ACTION:
+                    self._upsert_auto_todo(
+                        uid,
+                        self._replace_summary(entity_id),
+                        TODO_STATUS_NEEDS_ACTION,
+                        self._replace_description(entity_id),
+                    )
         # 1. 新增触发：创建或回弹为 needs_action
         for entity_id in newly_triggered:
             uid = self._auto_uid(TODO_KIND_REPLACE, entity_id)
@@ -1143,13 +1219,17 @@ class ConsumableTypeCoordinator(BaseCoordinator):
 
     # ---- 通知（基于触发集合差集，不再读 alert_status 单 bit）----
     @callback
-    def async_subscribe(self) -> None:
-        """订阅绑定实体状态变化，即时刷新（手动改值即时检测跳变通知）。"""
+    def async_subscribe(self) -> Callable[[], None] | None:
+        """订阅绑定实体状态变化，即时刷新（手动改值即时检测跳变通知）。
+
+        返回取消订阅回调；无绑定实体时返回 None（由调用方按需注册）。
+        """
         entities = self.source_entities
-        if entities:
-            self._unsub_state = async_track_state_change_event(
-                self.hass, list(entities), self._on_state_change
-            )
+        if not entities:
+            return None
+        return async_track_state_change_event(
+            self.hass, list(entities), self._on_state_change
+        )
 
     @callback
     def _on_state_change(self, event: Any) -> None:
@@ -1189,7 +1269,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             pairs.append((display, value_str, self.threshold_unit or ""))
         return pairs
 
-    def _alert_text(self, style: str) -> str:
+    def alert_text(self, style: str) -> str:
         """按样式生成消息文案（多设备逐行）。
         human：「{设备名} 请更换耗材。」（话术走翻译键，通用文案）；
         value：「{设备名} {当前值}{单位}」。

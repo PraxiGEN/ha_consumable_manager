@@ -1,6 +1,8 @@
 """耗材管理器 待办平台。"""
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.todo import (
     TodoItem,
     TodoItemStatus,
@@ -35,7 +37,12 @@ class ConsumableTodoListEntity(
 
     @property
     def todo_items(self) -> list[TodoItem]:
-        """待办列表（由协调器运行时数据转换）。"""
+        """待办列表（由协调器运行时数据转换）。
+
+        传 Home Assistant todo 平台标准定义的全部 6 个字段
+        (uid/summary/status/due/description/completed)；completed 表示
+        待办被标记完成的时间，由协调器在状态切换为 completed 时写入。
+        """
         return [
             TodoItem(
                 uid=item["uid"],
@@ -62,20 +69,29 @@ class ConsumableTodoListEntity(
         await self.coordinator.async_request_refresh()
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
-        """更新待办；勾选「更换」待办即视为已更换。"""
+        """更新待办；勾选「更换」待办即视为已更换。
+
+        HA 的 todo.update_item 服务允许部分字段更新（status / rename /
+        due_date / due_datetime / description 任一非空），未传字段在
+        TodoItem 中为 None；此处仅覆盖非 None 字段，避免误清空原值。
+        """
         if item.uid is None:
             return
-        old_status = self.coordinator._todos.get(item.uid, {}).get("status")
+        old_status = self.coordinator.get_todo_status(item.uid)
         new_status = (
-            item.status.value if item.status else TODO_STATUS_NEEDS_ACTION
+            item.status.value
+            if item.status
+            else (old_status or TODO_STATUS_NEEDS_ACTION)
         )
-        self.coordinator.async_upsert_todo(
-            uid=item.uid,
-            summary=item.summary,
-            status=new_status,
-            due=item.due,
-            description=item.description,
-        )
+        # 仅把非 None 字段纳入更新，None 字段保留原值
+        updates: dict[str, Any] = {"status": new_status}
+        if item.summary is not None:
+            updates["summary"] = item.summary
+        if item.due is not None:
+            updates["due"] = item.due
+        if item.description is not None:
+            updates["description"] = item.description
+        self.coordinator.async_update_todo_fields(item.uid, **updates)
         # 勾选「更换」待办 = 已更换（记录时间 + 联动扣减库存）
         self.coordinator.async_on_todo_completed(
             item.uid, old_status, new_status
