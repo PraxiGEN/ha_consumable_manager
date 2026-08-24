@@ -157,7 +157,7 @@ async def _send_pending(
     """把待推送列表合并为一条发送（渠道取并集），并清除待推送标记。"""
     lines: list[str] = []
     for coordinator, _config in pending:
-        lines.append(f"{coordinator.title}：{coordinator._alert_text(_style_of(_config))}")
+        lines.append(f"{coordinator.title}：{coordinator.alert_text(_style_of(_config))}")
     message = "\n".join(lines)
 
     if any(config[CONF_NOTIFY_SYSTEM] for _c, config in pending):

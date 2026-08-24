@@ -117,7 +117,9 @@ async def async_setup_entry(hass: HomeAssistant,
     # 首次刷新建立数据基线；实体订阅使「改实体值」即时刷新，定时轮询由
     # DataUpdateCoordinator 在实体加入监听时自动启动
     await coordinator.async_config_entry_first_refresh()
-    coordinator.async_subscribe()
+    unsub = coordinator.async_subscribe()
+    if unsub is not None:
+        entry.async_on_unload(unsub)
     entry.runtime_data = ConsumableManagerData(
         coordinator=coordinator,
         entity_signature=coordinator.entity_signature,
@@ -153,6 +155,5 @@ async def async_unload_entry(hass: HomeAssistant,
     if unload_ok:
         coordinator = getattr(entry.runtime_data, "coordinator", None)
         if coordinator is not None:
-            coordinator.async_unsubscribe()
             await coordinator.async_shutdown()
     return unload_ok
