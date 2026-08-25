@@ -278,6 +278,16 @@
               "water_purifier": "Water purifier consumable"
             }
           },
+          "group": {
+            "name": "Group"
+          },
+          "custom_consumable_entity": {
+            "name": "Custom consumable entity",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
           "last_replaced": {
             "name": "Last replaced"
           },
@@ -289,6 +299,12 @@
           },
           "source_entities": {
             "name": "Bound entities"
+          },
+          "manual_entities": {
+            "name": "Manually bound entities"
+          },
+          "regex_matched": {
+            "name": "Regex matched entities"
           },
           "threshold": {
             "name": "Threshold"

@@ -278,6 +278,16 @@
               "water_purifier": "净水器耗材"
             }
           },
+          "group": {
+            "name": "分组"
+          },
+          "custom_consumable_entity": {
+            "name": "自定义耗材实体",
+            "state": {
+              "true": "是",
+              "false": "否"
+            }
+          },
           "last_replaced": {
             "name": "上次更换"
           },
@@ -289,6 +299,12 @@
           },
           "source_entities": {
             "name": "绑定实体"
+          },
+          "manual_entities": {
+            "name": "手动绑定实体"
+          },
+          "regex_matched": {
+            "name": "正则匹配实体"
           },
           "threshold": {
             "name": "阈值"
