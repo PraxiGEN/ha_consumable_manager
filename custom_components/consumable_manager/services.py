@@ -58,6 +58,14 @@ def _find_type_coordinator(hass: HomeAssistant,
             return coord
     return None
 
+async def _refresh_coordinator_libraries(hass: HomeAssistant) -> None:
+    """写库服务成功后：重新加载合并库并更新全部类型协调器的库引用 + 触发刷新，
+    使待办/通知描述立即反映新设备映射 / 新耗材（无需重启 HA）。"""
+    library = await async_load_library(hass)
+    for coord in _type_coordinators(hass):
+        coord.update_library(library)
+        await coord.async_request_refresh()
+
 def _coerce_item_id( hass: HomeAssistant, raw: str | None ) -> str | None:
     """把库存项选择框的值规整为 item_id（实体选择器 → 属性/注册表反查）。"""
     if not raw:
@@ -439,6 +447,7 @@ async def async_add_consumable(hass: HomeAssistant,
         )
     except LibraryError as err:
         raise ServiceValidationError(str(err)) from err
+    await _refresh_coordinator_libraries(hass)
     return {
         "consumable_id": cid,
         "added": {
@@ -472,6 +481,7 @@ async def async_add_device( hass: HomeAssistant, call: ServiceCall ) -> dict[str
         )
     except LibraryError as err:
         raise ServiceValidationError(str(err)) from err
+    await _refresh_coordinator_libraries(hass)
     return {"added": entry, "path": str(user_library_path(hass))}
 
 async def async_add_type( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
@@ -520,6 +530,7 @@ async def async_add_type( hass: HomeAssistant, call: ServiceCall ) -> dict[str, 
         "default_threshold_unit": threshold_unit,
     }
     await async_write_user_type(hass, key, meta)
+    await _refresh_coordinator_libraries(hass)
     return {"type_key": key, "added": meta, "path": str(user_library_path(hass))}
 
 # ---- 服务：数据提取 ----
