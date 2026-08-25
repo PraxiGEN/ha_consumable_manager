@@ -12,7 +12,7 @@ PLATFORMS: Final = [Platform.SENSOR, Platform.TODO]
 # ---- 条目类型 ----
 CONF_ENTRY_TYPE: Final = "entry_type"
 ENTRY_TYPE_STOCK: Final = "stock"
-ENTRY_TYPE_CUSTOM: Final = "custom"
+ENTRY_TYPE_CUSTOM: Final = "custom_type"
 
 # 自定义类型向导（添加界面二级界面）表单字段
 CONF_TYPE_KEY: Final = "type_key"            # 类型键（id），需匹配 ID_PATTERN
@@ -32,6 +32,23 @@ CONF_THRESHOLD_OPERATOR: Final = "threshold_operator"  # 计算方式（大于 /
 CONF_MODEL: Final = "model"
 CONF_LAST_REPLACED: Final = "last_replaced"  # 上次更换时间（持久化，重启不丢）
 CONF_LAST_TRIGGERED_SIG: Final = "last_triggered_sig"  # 上次触发集合签名（len + 排序成员拼接，TriggeredSet 的唯一持久化基线）
+
+# ---- 耗材类型条目：绑定分组（多分组 → 多诊断实体）----
+# 分组列表存于 entry.options[CONF_BINDING_GROUPS]；每个分组为 dict：
+#   {CONF_GROUP_ID, CONF_GROUP_NAME, CONF_SOURCE_ENTITIES,
+#    可选 CONF_THRESHOLD_TYPE/THRESHOLD/UNIT/OPERATOR（覆盖条目级阈值）}
+# 旧条目（仅扁平 CONF_SOURCE_ENTITIES）由协调器合成单「默认」分组向后兼容。
+CONF_BINDING_GROUPS: Final = "binding_groups"
+CONF_GROUP_ID: Final = "id"          # 分组稳定 id（实体 unique_id 用，重命名不漂移）
+CONF_GROUP_NAME: Final = "name"      # 用户自定义分组名（name 标签）
+CONF_SELECTED_GROUP: Final = "selected_group"  # 修改分组时选中的分组 id
+CONF_REMOVE_GROUPS: Final = "remove_groups"    # 删除分组（多选，value=group_id 列表）
+
+# 自定义耗材实体分组（不绑定实体，按 added_at 计时，直接生成诊断实体）
+CONF_GROUP_KIND: Final = "kind"        # 分组类别：binding（绑定实体）/ custom（自定义耗材实体）
+CONF_ADDED_AT: Final = "added_at"      # 添加/更换时间（ISO 日期，计时起点）
+GROUP_KIND_BINDING: Final = "binding"  # 绑定实体分组（默认）
+GROUP_KIND_CUSTOM: Final = "custom_consumable_entity"    # 自定义耗材实体分组（自建数据 → 一个诊断实体）
 
 # 阈值类型：由绑定实体的语义决定
 THRESHOLD_TYPE_LIFETIME_PERCENT: Final = "lifetime_percent"  # 剩余寿命（%）
@@ -108,10 +125,10 @@ CONF_STOCK_THRESHOLD: Final = "stock_threshold"  # 低于此数量提醒购买
 CONF_SELECTED_ITEM: Final = "selected_item"
 CONF_REMOVE_ITEMS: Final = "remove_items"
 
-# 添加库存二级界面：添加方式（常用耗材 / 自定义）
+# 添加库存二级界面：添加方式（常用耗材 / 自定义耗材）
 CONF_ADD_METHOD: Final = "add_method"
 ADD_METHOD_CONSUMABLE: Final = "consumable"
-ADD_METHOD_CUSTOM: Final = "custom"
+ADD_METHOD_CUSTOM_CONSUMABLE: Final = "custom_consumable"
 
 # ---- 待办事项类型 ----
 TODO_KIND_REPLACE: Final = "replace"  # 更换耗材

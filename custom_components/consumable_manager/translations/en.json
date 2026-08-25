@@ -41,7 +41,7 @@
         "ink": "Printer consumables",
         "robot_vacuum": "Robot vacuum consumables",
         "water_purifier": "Water purifier consumables",
-        "custom": "Custom type",
+        "custom_type": "Custom type",
         "notification": "Notification channels",
         "stock": "Consumable stock management"
       }
@@ -104,7 +104,7 @@
     "add_method": {
       "options": {
         "consumable": "Common consumable",
-        "custom": "Custom"
+        "custom_consumable": "Custom consumable"
       }
     },
     "service_action": {
@@ -127,7 +127,7 @@
     "step": {
       "add_item": {
         "title": "Add stock",
-        "description": "Pick a related consumable type (required) and how to add: from the library or custom.",
+        "description": "Pick a related consumable type (required) and how to add: from the library or a custom consumable.",
         "data": {
           "add_method": "Add method",
           "item_type": "Related consumable type"
@@ -142,7 +142,7 @@
           "stock_threshold": "Stock threshold"
         }
       },
-      "custom": {
+      "custom_stock_item": {
         "title": "Custom stock item",
         "description": "Define a custom stock item (name, type, model, unit, quantity, stock threshold; all required except meta). The ID is auto-generated as type+model and written into the user library, reusable as a common consumable.",
         "data": {
@@ -162,22 +162,61 @@
         "description": "Edit stock item \"{name}\" (only quantity and stock threshold are editable; to change name/model, delete and re-add the item).",
         "title": "Edit stock item"
       },
-      "entities": {
+      "add_group": {
+        "title": "Add group",
+        "description": "Choose the group kind: bound entities (link sensors/groups, evaluated by entity values) or custom consumable entity (self-built data, generates a diagnostic entity by elapsed used time).",
         "data": {
-          "entity_regex": "Regex for entity IDs (optional)",
-          "source_entities": "Consumable entities"
-        },
-        "description": "Union of regex match on entity IDs (priority) and manual multi-select. You can also pick a group helper: its members are expanded and monitored individually (group changes are followed dynamically).",
-        "title": "Manage consumable entities"
+          "kind": "Group kind"
+        }
+      },
+      "custom_entity": {
+        "title": "Custom consumable entity",
+        "description": "Build one consumable record: name (defaults to the current consumable entry), added/replaced date, and an elapsed-used-time threshold. Saving creates a corresponding replace-status diagnostic entity (no entity bound).",
+        "data": {
+          "name": "Name",
+          "added_at": "Added date",
+          "threshold": "Lifetime threshold",
+          "threshold_unit": "Unit"
+        }
+      },
+      "select_group": {
+        "title": "Edit group",
+        "description": "Choose a group to edit.",
+        "data": {
+          "selected_group": "Group"
+        }
+      },
+      "remove_groups": {
+        "title": "Remove groups",
+        "description": "Select the groups to remove (multiple).",
+        "data": {
+          "remove_groups": "Groups to remove"
+        }
+      },
+      "group": {
+        "title": "Group settings",
+        "description": "Set the group name and bound entities: manual multi-select + regex rule (optional). The regex rule matches current entity IDs at runtime; newly matched entities join the group automatically. Manual and regex are unioned. Optionally override the entry-level threshold to set a group-specific threshold.",
+        "data": {
+          "name": "Group name",
+          "entity_regex": "Regex rule (optional): matches entity IDs at runtime; newly matched entities join automatically.",
+          "source_entities": "Consumable entities",
+          "override_threshold": "Override entry-level threshold",
+          "threshold_type": "Threshold type",
+          "threshold": "Threshold",
+          "threshold_unit": "Unit",
+          "threshold_operator": "Comparison"
+        }
       },
       "init": {
         "description": "Choose an action.",
         "menu_options": {
           "add_item": "Add stock",
-          "entities": "Manage consumable entities",
+          "add_group": "Add group",
           "notification": "Notification channels",
           "remove_items": "Remove stock",
+          "remove_groups": "Remove groups",
           "select_item": "Edit stock",
+          "select_group": "Edit group",
           "threshold": "Set threshold"
         },
         "title": "Consumable management"
@@ -239,11 +278,33 @@
               "water_purifier": "Water purifier consumable"
             }
           },
+          "group": {
+            "name": "Group"
+          },
+          "custom_consumable_entity": {
+            "name": "Custom consumable entity",
+            "state": {
+              "true": "Yes",
+              "false": "No"
+            }
+          },
           "last_replaced": {
             "name": "Last replaced"
           },
+          "added_at": {
+            "name": "Added date"
+          },
+          "elapsed": {
+            "name": "Elapsed used time"
+          },
           "source_entities": {
             "name": "Bound entities"
+          },
+          "manual_entities": {
+            "name": "Manually bound entities"
+          },
+          "regex_matched": {
+            "name": "Regex matched entities"
           },
           "threshold": {
             "name": "Threshold"
