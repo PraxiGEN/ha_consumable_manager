@@ -748,6 +748,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         # 合并库实例（内置 + 用户），用于待办描述展示耗材信息
         self._library = library
 
+    def update_library(self, library: Library) -> None:
+        """更新合并库引用（写库服务后调用，待办/通知立即用最新库匹配耗材）。"""
+        self._library = library
+
     @property
     def cons_type(self) -> str:
         """耗材类型（电池 / 滤芯 / …）。"""
