@@ -8,7 +8,22 @@
     "meta": {
       "size": "26.5mm x 17.5mm x 48.5mm",
       "voltage": 9,
-      "chemistry": "Alkaline"
+      "chemistry": "Alkaline",
+      "application": "万用表、烟雾报警器、无线麦克风"
+    }
+  },
+  {
+    "id": "battery_a23",
+    "type": "battery",
+    "model": "A23",
+    "name": "A23 12V battery",
+    "unit": "节",
+    "meta": {
+      "size": "28.5mm x 10.3mm",
+      "voltage": 12,
+      "chemistry": "Alkaline",
+      "alias": "23A, MN21, V23GA",
+      "application": "车库门遥控器、安防遥控器"
     }
   },
   {
@@ -20,7 +35,8 @@
     "meta": {
       "size": "14mm x 50mm",
       "voltage": 1.5,
-      "chemistry": "Alkaline"
+      "chemistry": "Alkaline",
+      "application": "无线鼠标键盘、遥控器、电动玩具"
     }
   },
   {
@@ -32,7 +48,101 @@
     "meta": {
       "size": "10.5mm x 44.5mm",
       "voltage": 1.5,
-      "chemistry": "Alkaline"
+      "chemistry": "Alkaline",
+      "application": "遥控器、挂钟、计算器、蓝牙耳机"
+    }
+  },
+  {
+    "id": "battery_aaaa",
+    "type": "battery",
+    "model": "AAAA",
+    "name": "AAAA battery",
+    "unit": "节",
+    "meta": {
+      "size": "8.3mm x 42.5mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline",
+      "alias": "9号电池",
+      "application": "手写笔、激光笔、血糖仪"
+    }
+  },
+  {
+    "id": "battery_c",
+    "type": "battery",
+    "model": "C",
+    "name": "C size battery",
+    "unit": "节",
+    "meta": {
+      "size": "26.2mm x 50mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline",
+      "alias": "2号电池",
+      "application": "手电筒、收音机、玩具"
+    }
+  },
+  {
+    "id": "battery_cr123a",
+    "type": "battery",
+    "model": "CR123A",
+    "name": "CR123A battery",
+    "unit": "粒",
+    "meta": {
+      "size": "17mm x 34.5mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn",
+      "application": "相机、智能传感器"
+    }
+  },
+  {
+    "id": "battery_cr1620",
+    "type": "battery",
+    "model": "CR1620",
+    "name": "Button cell CR1620",
+    "unit": "粒",
+    "meta": {
+      "size": "16mm x 2.0mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn",
+      "application": "车钥匙、微型设备"
+    }
+  },
+  {
+    "id": "battery_cr1632",
+    "type": "battery",
+    "model": "CR1632",
+    "name": "Button cell CR1632",
+    "unit": "粒",
+    "meta": {
+      "size": "16mm x 3.2mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn",
+      "application": "胎压监测、GPS、医疗仪器"
+    }
+  },
+  {
+    "id": "battery_cr2016",
+    "type": "battery",
+    "model": "CR2016",
+    "name": "Button cell CR2016",
+    "unit": "粒",
+    "meta": {
+      "size": "20mm x 1.6mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn",
+      "application": "手表、健身手环、BIOS备份"
+    }
+  },
+  {
+    "id": "battery_cr2025",
+    "type": "battery",
+    "model": "CR2025",
+    "name": "Button cell CR2025",
+    "unit": "粒",
+    "meta": {
+      "size": "20mm x 2.5mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn",
+      "application": "车钥匙、电子秤、蓝牙耳机盒"
     }
   },
   {
@@ -44,7 +154,22 @@
     "meta": {
       "size": "20mm x 3.2mm",
       "voltage": 3,
-      "chemistry": "Li-Mn"
+      "chemistry": "Li-Mn",
+      "application": "主板CMOS、AirTag、无线门铃"
+    }
+  },
+  {
+    "id": "battery_cr2430",
+    "type": "battery",
+    "model": "CR2430",
+    "name": "Button cell CR2430",
+    "unit": "粒",
+    "meta": {
+      "size": "24mm x 3.0mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn",
+      "alias": "DL2430, ECR2430",
+      "application": "智能开关、医疗遥控器"
     }
   },
   {
@@ -56,7 +181,217 @@
     "meta": {
       "size": "24.5mm x 5.0mm",
       "voltage": 3,
-      "chemistry": "Li-Mn"
+      "chemistry": "Li-Mn",
+      "application": "智能门锁、GPS 记录仪"
+    }
+  },
+  {
+    "id": "battery_cr2477",
+    "type": "battery",
+    "model": "CR2477",
+    "name": "Button cell CR2477",
+    "unit": "粒",
+    "meta": {
+      "size": "24.5mm x 7.7mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn",
+      "application": "智能水表、工业设备、人员定位卡"
+    }
+  },
+  {
+    "id": "battery_d",
+    "type": "battery",
+    "model": "D",
+    "name": "D size battery",
+    "unit": "节",
+    "meta": {
+      "size": "34.2mm x 61.5mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline",
+      "alias": "1号电池",
+      "application": "燃气灶、热水器、大号手电筒"
+    }
+  },
+  {
+    "id": "battery_lr1130",
+    "type": "battery",
+    "model": "LR1130",
+    "name": "Button cell LR1130",
+    "unit": "粒",
+    "meta": {
+      "size": "11.6mm x 3.1mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline",
+      "alias": "AG10, LR54, SR1130",
+      "application": "计算器、助听器、玩具"
+    }
+  },
+  {
+    "id": "battery_lr41",
+    "type": "battery",
+    "model": "LR41",
+    "name": "Button cell LR41",
+    "unit": "粒",
+    "meta": {
+      "size": "7.9mm x 3.6mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline",
+      "alias": "AG3, SR41, LR736",
+      "application": "电子体温计、发光玩具"
+    }
+  },
+  {
+    "id": "battery_lr44",
+    "type": "battery",
+    "model": "LR44",
+    "name": "Button cell LR44",
+    "unit": "粒",
+    "meta": {
+      "size": "11.6mm x 5.4mm",
+      "voltage": 1.5,
+      "chemistry": "Alkaline",
+      "alias": "AG13, A76, LR1154, SR44",
+      "application": "计算器、电子玩具、血糖仪、游标卡尺"
+    }
+  },
+  {
+    "id": "battery_sr44sw",
+    "type": "battery",
+    "model": "SR44SW",
+    "name": "Button cell SR44SW",
+    "unit": "粒",
+    "meta": {
+      "size": "11.6mm x 5.4mm",
+      "voltage": 1.55,
+      "chemistry": "Silver Oxide",
+      "alias": "357, SR44, 303",
+      "application": "手表、精密计算器、血糖仪"
+    }
+  },
+  {
+    "id": "battery_sr621sw",
+    "type": "battery",
+    "model": "SR621SW",
+    "name": "Button cell SR621SW",
+    "unit": "粒",
+    "meta": {
+      "size": "6.8mm x 2.1mm",
+      "voltage": 1.55,
+      "chemistry": "Silver Oxide",
+      "alias": "379, AG0",
+      "application": "超薄手表、微型电子产品"
+    }
+  },
+  {
+    "id": "battery_sr626sw",
+    "type": "battery",
+    "model": "SR626SW",
+    "name": "Button cell SR626SW",
+    "unit": "粒",
+    "meta": {
+      "size": "6.8mm x 2.6mm",
+      "voltage": 1.55,
+      "chemistry": "Silver Oxide",
+      "alias": "377, AG1, LR66",
+      "application": "手表、精密仪器"
+    }
+  },
+  {
+    "id": "filter_3m_kj306f_hepa",
+    "type": "filter",
+    "model": "KJ306F-GD HEPA",
+    "name": "3M KJ306F HEPA filter",
+    "unit": "个",
+    "meta": {
+      "compatible": "3M KJ306F / KJ306F-GD series",
+      "grade": "HEPA H13",
+      "lifetime_months": 6
+    }
+  },
+  {
+    "id": "filter_3m_kje400_hepa",
+    "type": "filter",
+    "model": "KJE400 HEPA+Carbon",
+    "name": "3M KJE400 HEPA+活性炭复合滤网",
+    "unit": "个",
+    "meta": {
+      "compatible": "3M KJE400 / KJEA400 series",
+      "structure": "HEPA + 活性炭 二合一",
+      "lifetime_months": 12
+    }
+  },
+  {
+    "id": "filter_activated_carbon_bulk",
+    "type": "filter",
+    "model": "AC-Pellets-1kg",
+    "name": "Activated carbon bulk refill pellets",
+    "unit": "袋",
+    "meta": {
+      "form": "coconut-shell activated carbon pellets",
+      "capacity": "1kg",
+      "application": "空气净化器炭盒补充、甲醛吸附、DIY 过滤"
+    }
+  },
+  {
+    "id": "filter_blueair_200_smokestop",
+    "type": "filter",
+    "model": "200-SmokeStop",
+    "name": "Blueair 200 series SmokeStop filter",
+    "unit": "个",
+    "meta": {
+      "compatible": "Blueair 201/203/203 Slim/250E/260i/270E Slim",
+      "structure": "HEPA particle layer + 活性炭除甲醛",
+      "grade": "H12 equivalent"
+    }
+  },
+  {
+    "id": "filter_blueair_400_particle",
+    "type": "filter",
+    "model": "400-Particle",
+    "name": "Blueair 400 series Particle filter",
+    "unit": "个",
+    "meta": {
+      "compatible": "Blueair 403/410B/450E/480i",
+      "structure": "Particle HEPA (粒子型)",
+      "grade": "H12 equivalent",
+      "variant_hint": "若需除甲醛请选 SmokeStop 版本"
+    }
+  },
+  {
+    "id": "filter_car_hepa_general",
+    "type": "filter",
+    "model": "CarCabin-Gen",
+    "name": "Car cabin HEPA filter (通用)",
+    "unit": "片",
+    "meta": {
+      "size_hint": "常见尺寸 200x180mm, 215x200mm, 245x195mm 等",
+      "structure": "HEPA + 活性炭双层",
+      "application": "车载空调滤清器替换 (请按车架号再查具体尺寸)"
+    }
+  },
+  {
+    "id": "filter_dyson_965432_01_hepa",
+    "type": "filter",
+    "model": "965432-01",
+    "name": "Dyson 360° Glass HEPA + Carbon filter (965432-01)",
+    "unit": "个",
+    "meta": {
+      "part_number": "965432-01",
+      "compatible": "Dyson PH04/PH03/PH01/HP07/HP09/HP04/TP07/TP04/TP7A/DP04/PC1/Gen1",
+      "grade": "H13 HEPA (99.97% @ 0.3μm) + 活性炭",
+      "lifetime_months": 12
+    }
+  },
+  {
+    "id": "filter_dyson_tp03_hepa",
+    "type": "filter",
+    "model": "TP03-Glass",
+    "name": "Dyson Pure Cool TP03/AM11/BP01 integrated filter",
+    "unit": "个",
+    "meta": {
+      "part_number": "968127-03 / 968127-04",
+      "compatible": "Dyson Pure Cool TP00/TP03/AM11/BP01 (旧款 Pure Cool 系列)",
+      "grade": "Glass HEPA H13 + 活性炭一体"
     }
   },
   {
@@ -68,6 +403,18 @@
     "meta": {}
   },
   {
+    "id": "filter_hepa11",
+    "type": "filter",
+    "model": "HEPA-11",
+    "name": "HEPA 11 filter",
+    "unit": "个",
+    "meta": {
+      "lifetime_hours": 1200,
+      "grade": "H11",
+      "application": "中高效过滤（新风、一般净化器）"
+    }
+  },
+  {
     "id": "filter_hepa13",
     "type": "filter",
     "model": "HEPA-13",
@@ -76,6 +423,335 @@
     "meta": {
       "lifetime_hours": 1500,
       "grade": "H13"
+    }
+  },
+  {
+    "id": "filter_honeywell_hrf_r3",
+    "type": "filter",
+    "model": "HRF-R3",
+    "name": "Honeywell True HEPA Filter (HRF-R3)",
+    "unit": "个",
+    "meta": {
+      "part_number": "HRF-R3 / HRF-R1 x3 (套装)",
+      "compatible": "Honeywell HPA100/HPA200/HPA300/HPA5300 series",
+      "grade": "True HEPA (99.97% @ 0.3μm)",
+      "lifetime_months": 12
+    }
+  },
+  {
+    "id": "filter_philips_fy3432_hepa",
+    "type": "filter",
+    "model": "FY3432/10",
+    "name": "Philips NanoProtect HEPA filter FY3432",
+    "unit": "个",
+    "meta": {
+      "part_number": "FY3432/10 (HEPA), 配套活性炭 FY3433/10",
+      "compatible": "Philips Series 3000i: AC3252/AC3254/AC3256/AC3259",
+      "grade": "VitaShield IPS NanoProtect HEPA"
+    }
+  },
+  {
+    "id": "filter_sharp_fz_gf38xh_hepa",
+    "type": "filter",
+    "model": "FZ-GF38XH",
+    "name": "Sharp KC series HEPA filter FZ-GF38XH",
+    "unit": "片",
+    "meta": {
+      "part_number": "FZ-GF38XH",
+      "compatible": "Sharp KC-W380/KC-W280/KC-W200/KC-Z200/KC-Z280/KC-Z380 系列 (加湿空净)",
+      "grade": "HEPA"
+    }
+  },
+  {
+    "id": "filter_sharp_fz_hf60me_humid",
+    "type": "filter",
+    "model": "FZ-HF60ME",
+    "name": "Sharp KC series humidifying filter FZ-HF60ME",
+    "unit": "片",
+    "meta": {
+      "part_number": "FZ-HF60ME / FZ-HF60MR",
+      "compatible": "Sharp KC-W380/KC-W280/KC-Z380/KI-GS60 加湿型系列",
+      "replace_months": 4,
+      "washable": true
+    }
+  },
+  {
+    "id": "filter_xiaomi_airpurifier_2",
+    "type": "filter",
+    "model": "AC-M1-M2",
+    "name": "Mi Air Purifier 1/2 filter",
+    "unit": "个",
+    "meta": {
+      "shape": "cylindrical",
+      "compatible": "Mi Air Purifier 1/2"
+    }
+  },
+  {
+    "id": "filter_xiaomi_airpurifier_3",
+    "type": "filter",
+    "model": "AC-M18-SC",
+    "name": "Mi Air Purifier 3/3H filter",
+    "unit": "个",
+    "meta": {
+      "shape": "cylindrical",
+      "compatible": "Mi Air Purifier 3/3H"
+    }
+  },
+  {
+    "id": "filter_xiaomi_airpurifier_3c",
+    "type": "filter",
+    "model": "MJPFJ02SX",
+    "name": "Mi Air Purifier 3C filter",
+    "unit": "个",
+    "meta": {
+      "shape": "cylindrical",
+      "compatible": "Mi Air Purifier 3C"
+    }
+  },
+  {
+    "id": "filter_xiaomi_airpurifier_4",
+    "type": "filter",
+    "model": "MJAP01D",
+    "name": "Mi Air Purifier 4/4 Lite filter",
+    "unit": "个",
+    "meta": {
+      "shape": "cylindrical",
+      "compatible": "Mi Air Purifier 4/4 Lite"
+    }
+  },
+  {
+    "id": "filter_xiaomi_airpurifier_4pro",
+    "type": "filter",
+    "model": "MJPFJ05SX",
+    "name": "Mi Air Purifier 4 Pro filter",
+    "unit": "个",
+    "meta": {
+      "grade": "HEPA",
+      "compatible": "Mi Air Purifier 4 Pro"
+    }
+  },
+  {
+    "id": "filter_xiaomi_airpurifier_max",
+    "type": "filter",
+    "model": "AC-MD2-SC",
+    "name": "Mi Air Purifier Max filter",
+    "unit": "个",
+    "meta": {
+      "shape": "cylindrical",
+      "compatible": "Mi Air Purifier Max/4 Max"
+    }
+  },
+  {
+    "id": "filter_xiaomi_airpurifier_proh",
+    "type": "filter",
+    "model": "AC-M13-SC",
+    "name": "Mi Air Purifier Pro H filter",
+    "unit": "个",
+    "meta": {
+      "grade": "HEPA",
+      "compatible": "Mi Air Purifier Pro H"
+    }
+  },
+  {
+    "id": "humidifier_bacteriostatic_silver_ion_module",
+    "type": "humidifier",
+    "model": "Ag+-Module",
+    "name": "Humidifier silver-ion bacteriostatic module",
+    "unit": "个",
+    "meta": {
+      "compatible": "多数独立水箱加湿器（非专用机型）",
+      "capacity_hint": "适用水箱 1.5L~5L",
+      "lifetime_months": 12,
+      "feature": "银离子缓释抑菌盒，抑制水箱滋生细菌"
+    }
+  },
+  {
+    "id": "humidifier_cold_evap_general_filter",
+    "type": "humidifier",
+    "model": "Evap-General",
+    "name": "Cold-evaporation humidifier general filter",
+    "unit": "片",
+    "meta": {
+      "structure": "多层吸水纤维（冷蒸发专用）",
+      "sizes": "常见尺寸 170x170mm, 200x120mm, 280x130mm 等",
+      "washable": true,
+      "replace_months": 3
+    }
+  },
+  {
+    "id": "humidifier_descaler",
+    "type": "humidifier",
+    "model": "descale-tablets",
+    "name": "Humidifier descale tablets",
+    "unit": "片",
+    "meta": {
+      "purpose": "descaling"
+    }
+  },
+  {
+    "id": "humidifier_panasonic_fz_vx",
+    "type": "humidifier",
+    "model": "FZ-VX50K1",
+    "name": "Panasonic FZ humidifying + HEPA filter set",
+    "unit": "套",
+    "meta": {
+      "part_number": "加湿滤网 FZ-G30MFE / HEPA FZ-Y30HFE（系列套装）",
+      "compatible": "Panasonic F-VXJ50 / F-VXF35 / F-VK655 系列加湿空气净化器",
+      "replace_months": 6
+    }
+  },
+  {
+    "id": "humidifier_philips_hu4101",
+    "type": "humidifier",
+    "model": "HU4101/01",
+    "name": "Philips HU4101 NanoCloud filter",
+    "unit": "片",
+    "meta": {
+      "part_number": "HU4101/01",
+      "compatible": "Philips HU4901/HU4902/HU4903 series (HU4xxx 系列 NanoCloud 冷蒸发)",
+      "replace_months": 3,
+      "washable": true
+    }
+  },
+  {
+    "id": "humidifier_philips_hu4136",
+    "type": "humidifier",
+    "model": "HU4136/01",
+    "name": "Philips HU4136 HU-series upgrade filter",
+    "unit": "片",
+    "meta": {
+      "part_number": "HU4136/01",
+      "compatible": "Philips HU3915/HU3916/HU3918/HU4706/HU4801/HU4803 系列",
+      "feature": "NanoCloud 3 代升级滤网",
+      "replace_months": 6
+    }
+  },
+  {
+    "id": "humidifier_smartmi_evap_pad",
+    "type": "humidifier",
+    "model": "CJXJSQ-evap-disc",
+    "name": "Smartmi evaporative humidifier pad",
+    "unit": "件",
+    "meta": {
+      "compatible": "Smartmi Evaporative Humidifier (zhimi.humidifier.cb1/ca4)"
+    }
+  },
+  {
+    "id": "humidifier_yadu_evap_filter",
+    "type": "humidifier",
+    "model": "Yadu-Evap-SZ",
+    "name": "Yadu evaporative humidifier filter",
+    "unit": "片",
+    "meta": {
+      "compatible": "亚都 SZ-J030/SZ-J131/SC700/SCK-D052 等无雾冷蒸发系列",
+      "washable": true,
+      "replace_months": 4
+    }
+  },
+  {
+    "id": "ink_brother_bt5009_cmy",
+    "type": "ink",
+    "model": "BT5009 CMY",
+    "name": "Brother BT5009 CMY ink bottle set",
+    "unit": "组",
+    "meta": {
+      "part_number": "BT5009C / BT5009M / BT5009Y (三色套装)",
+      "compatible": "Brother DCP-T220/T420W/T520W/T720DW/MFC-T4500DW 墨仓式",
+      "volume_each": "44.4ml x3",
+      "page_yield_each": 5000
+    }
+  },
+  {
+    "id": "ink_brother_bt6009_black",
+    "type": "ink",
+    "model": "BT6009BK",
+    "name": "Brother BT6009BK black ink bottle",
+    "unit": "瓶",
+    "meta": {
+      "part_number": "BT6009BK",
+      "compatible": "Brother DCP-T220/T310/T510W/T710W/MFC-T810W/T910DW 墨仓式",
+      "volume": "108ml",
+      "page_yield": 6000,
+      "color": "black"
+    }
+  },
+  {
+    "id": "ink_canon_cl816_color",
+    "type": "ink",
+    "model": "CL-816",
+    "name": "Canon CL-816 tri-color ink cartridge",
+    "unit": "支",
+    "meta": {
+      "part_number": "CL-816 (标准量) / CL-816XL (大容量)",
+      "compatible": "Canon MP288/MP236/IP2780/MP498/IP2788 喷墨打印机",
+      "page_yield_iso_24711": 244,
+      "color": "tri-color (c/m/y)"
+    }
+  },
+  {
+    "id": "ink_canon_cl846_color",
+    "type": "ink",
+    "model": "CL-846",
+    "name": "Canon CL-846 tri-color ink cartridge",
+    "unit": "支",
+    "meta": {
+      "part_number": "CL-846 / CL-846XL",
+      "compatible": "Canon MG2580S/MG2980/MG3080/TS3180/TS3380/TS3480/IP2880S",
+      "page_yield_iso_24711": 180,
+      "color": "tri-color"
+    }
+  },
+  {
+    "id": "ink_canon_pg815_black",
+    "type": "ink",
+    "model": "PG-815",
+    "name": "Canon PG-815 black ink cartridge",
+    "unit": "支",
+    "meta": {
+      "part_number": "PG-815 / PG-815XL",
+      "compatible": "Canon MP288/MP236/IP2780/MP498/IP2788 (CL816 同系列机型)",
+      "page_yield_iso_24711": 220,
+      "color": "black"
+    }
+  },
+  {
+    "id": "ink_canon_pg845_black",
+    "type": "ink",
+    "model": "PG-845",
+    "name": "Canon PG-845 black ink cartridge",
+    "unit": "支",
+    "meta": {
+      "part_number": "PG-845 / PG-845XL",
+      "compatible": "Canon MG2580S/MG2980/MG3080/TS3180/TS3380/TS3480/IP2880S (CL846 同系)",
+      "page_yield_iso_24711": 300,
+      "color": "black"
+    }
+  },
+  {
+    "id": "ink_epson_t664_black",
+    "type": "ink",
+    "model": "T6641",
+    "name": "Epson T6641 EcoTank black ink bottle",
+    "unit": "瓶",
+    "meta": {
+      "part_number": "T6641 (国内同规格 672/T03X 系列通用)",
+      "compatible": "Epson L310/L360/L380/L351/L130/L3151/L4168/L4158 墨仓式 (EcoTank)",
+      "volume": "70ml",
+      "page_yield_iso_24711": 4000,
+      "color": "black"
+    }
+  },
+  {
+    "id": "ink_epson_t664_cmy",
+    "type": "ink",
+    "model": "T6642/3/4 CMY",
+    "name": "Epson T664 EcoTank CMY ink bottle set",
+    "unit": "组",
+    "meta": {
+      "part_number": "T6642 Cyan / T6643 Magenta / T6644 Yellow",
+      "compatible": "Epson L310/L360/L380/L351/L3151/L4158/L4168 系列 (672/T03X 同规格)",
+      "volume_each": "70ml x3",
+      "page_yield_each": 6500
     }
   },
   {
@@ -101,6 +777,215 @@
     }
   },
   {
+    "id": "ink_hp_gt51_black",
+    "type": "ink",
+    "model": "GT51/GT53XL",
+    "name": "HP GT51/GT53 black ink bottle",
+    "unit": "瓶",
+    "meta": {
+      "part_number": "GT51 90ml / GT53XL 135ml",
+      "compatible": "HP Smart Tank 511/518/519/538/618 / DeskJet GT 5810/5820 墨仓式",
+      "page_yield_iso_24711": "5000 (GT53XL)",
+      "volume": "90ml / 135ml",
+      "color": "black"
+    }
+  },
+  {
+    "id": "ink_hp_gt52_cmy",
+    "type": "ink",
+    "model": "GT52 CMY",
+    "name": "HP GT52 CMY ink bottle set",
+    "unit": "组",
+    "meta": {
+      "part_number": "GT52 C/M/Y 三色套装",
+      "compatible": "HP Smart Tank 511/518/519/538/618 / DeskJet GT5810/GT5820 墨仓式",
+      "volume_each": "70ml x3",
+      "page_yield_each": 8000
+    }
+  },
+  {
+    "id": "robot_vacuum_dreame_cleaning_solution",
+    "type": "robot_vacuum",
+    "model": "Dreame-CL1",
+    "name": "Dreame robot vacuum cleaning solution",
+    "unit": "瓶",
+    "meta": {
+      "capacity": "1L",
+      "compatible": "S10/S20/S30/S40/S50/X20/X30/X40/L10/L20 series",
+      "feature": "除菌除味、低泡易漂洗"
+    }
+  },
+  {
+    "id": "robot_vacuum_dreame_dust_bag_4l",
+    "type": "robot_vacuum",
+    "model": "Dreame-DB-4L",
+    "name": "Dreame robot vacuum 4L dust bag",
+    "unit": "个",
+    "meta": {
+      "capacity": "4L",
+      "compatible": "S10 Pro Plus/S30/S40 Ultra/S50 Pro Ultra/X30 Pro/X40 Ultra 自动集尘站",
+      "material": "无纺布+熔喷双层"
+    }
+  },
+  {
+    "id": "robot_vacuum_dreame_filter_silver_ion",
+    "type": "robot_vacuum",
+    "model": "Dreame-FT-AG",
+    "name": "Dreame robot vacuum silver-ion filter",
+    "unit": "个",
+    "meta": {
+      "compatible": "S10/S20/S30/S40/S50/X20/X30/X40/L10 Plus/Z10 Pro",
+      "material": "HEPA 11 + 银离子抗菌层",
+      "washable": true
+    }
+  },
+  {
+    "id": "robot_vacuum_dreame_main_brush_s10",
+    "type": "robot_vacuum",
+    "model": "Dreame-MB-S10",
+    "name": "Dreame robot vacuum main brush S10 series",
+    "unit": "个",
+    "meta": {
+      "compatible": "S10/S20/S40/S50/L10/L20/X20/X30/X40 series",
+      "design": "防缠绕胶毛一体刷",
+      "bristle_material": "尼龙 + TPU 软胶"
+    }
+  },
+  {
+    "id": "robot_vacuum_dreame_mop_pad_trail",
+    "type": "robot_vacuum",
+    "model": "Dreame-MP-Track",
+    "name": "Dreame robot vacuum trail mop pad",
+    "unit": "块",
+    "meta": {
+      "compatible": "S10 Pro Ultra/S30/S40 Pro/S50 Pro/X30/X40 series (履带式双拖板)",
+      "material": "履带式可水洗纤维布",
+      "feature": "强摩擦、仿手搓"
+    }
+  },
+  {
+    "id": "robot_vacuum_dreame_side_brush_s10",
+    "type": "robot_vacuum",
+    "model": "Dreame-SB-S10",
+    "name": "Dreame robot vacuum side brush S10 series",
+    "unit": "个",
+    "meta": {
+      "compatible": "S10/S20/S30/S40/S50/X20/X30/X40/L10 series",
+      "design": "5爪螺旋边刷",
+      "mount_hint": "白色卡口"
+    }
+  },
+  {
+    "id": "robot_vacuum_dust_bag",
+    "type": "robot_vacuum",
+    "model": "RR001",
+    "name": "Robot vacuum dust bag",
+    "unit": "个",
+    "meta": {
+      "compatible": "auto-empty dock"
+    }
+  },
+  {
+    "id": "robot_vacuum_ecovacs_cleaning_solution",
+    "type": "robot_vacuum",
+    "model": "Ecovacs-CL1",
+    "name": "Ecovacs robot vacuum cleaning solution",
+    "unit": "瓶",
+    "meta": {
+      "capacity": "1L",
+      "compatible": "T8/T10/T20/T30/X1/X2/X5/N8/N9+/DEEBOT 系列",
+      "feature": "蓝风铃香型、除菌 99.9%"
+    }
+  },
+  {
+    "id": "robot_vacuum_ecovacs_dust_bag_x1",
+    "type": "robot_vacuum",
+    "model": "Ecovacs-DB-X1",
+    "name": "Ecovacs robot vacuum dust bag X1 series",
+    "unit": "个",
+    "meta": {
+      "capacity": "2.5L / 3L",
+      "compatible": "X1 OMni/T10 OMni/T20 OMni/X5 OMni/X2 OMni Pro/T30 OMni",
+      "material": "抗菌无纺布熔喷三层"
+    }
+  },
+  {
+    "id": "robot_vacuum_ecovacs_filter_antibact",
+    "type": "robot_vacuum",
+    "model": "Ecovacs-FT-AB",
+    "name": "Ecovacs robot vacuum antibacterial filter",
+    "unit": "个",
+    "meta": {
+      "compatible": "X1/T10/T20/T30/X2/X5/N8/N9+ series",
+      "material": "HEPA 12 + 抗菌无纺布",
+      "washable": true
+    }
+  },
+  {
+    "id": "robot_vacuum_ecovacs_main_brush_x1",
+    "type": "robot_vacuum",
+    "model": "Ecovacs-MB-X1",
+    "name": "Ecovacs robot vacuum main brush X1 series",
+    "unit": "个",
+    "meta": {
+      "compatible": "X1/T10/T20/T30/X2/X5 series",
+      "design": "浮动滚刷（防毛发缠绕+深层扫）"
+    }
+  },
+  {
+    "id": "robot_vacuum_ecovacs_mop_cloth_x1",
+    "type": "robot_vacuum",
+    "model": "Ecovacs-MC-X1",
+    "name": "Ecovacs robot vacuum mop cloth X1 series",
+    "unit": "块",
+    "meta": {
+      "compatible": "X1/T10/T20/N8/N9+ (单/双拖板通用)",
+      "material": "超细纤维、可水洗多次"
+    }
+  },
+  {
+    "id": "robot_vacuum_ecovacs_mop_pad_omni",
+    "type": "robot_vacuum",
+    "model": "Ecovacs-MP-Omni",
+    "name": "Ecovacs robot vacuum OMni dual-core mop pad",
+    "unit": "块",
+    "meta": {
+      "compatible": "X2 OMni/X2/X5 OMni/T30 OMni (双芯加压拖板专用)",
+      "material": "双芯多层复合纤维"
+    }
+  },
+  {
+    "id": "robot_vacuum_ecovacs_side_brush_x1",
+    "type": "robot_vacuum",
+    "model": "Ecovacs-SB-X1",
+    "name": "Ecovacs robot vacuum side brush X1 series",
+    "unit": "个",
+    "meta": {
+      "compatible": "X1/T10/T20/X2/X5/N8/N9+/T8 series",
+      "design": "3爪直毛边刷"
+    }
+  },
+  {
+    "id": "robot_vacuum_filter",
+    "type": "robot_vacuum",
+    "model": "RR006",
+    "name": "Robot vacuum HEPA filter",
+    "unit": "个",
+    "meta": {
+      "location": "dustbin"
+    }
+  },
+  {
+    "id": "robot_vacuum_main_brush",
+    "type": "robot_vacuum",
+    "model": "SDZS03RR",
+    "name": "Robot vacuum main brush",
+    "unit": "个",
+    "meta": {
+      "compatible": "Roborock S5/S6/S7/E4/E5"
+    }
+  },
+  {
     "id": "robot_vacuum_mop",
     "type": "robot_vacuum",
     "model": "mop",
@@ -109,12 +994,253 @@
     "meta": {}
   },
   {
+    "id": "robot_vacuum_narwal_cleaning_solution",
+    "type": "robot_vacuum",
+    "model": "Narwal-CL1",
+    "name": "Narwal robot vacuum cleaning solution",
+    "unit": "瓶",
+    "meta": {
+      "capacity": "1L",
+      "compatible": "J1/J2/J3/J4/Freo/Freo X/逍遥 001/002 系列",
+      "feature": "无香型 + 除菌成分"
+    }
+  },
+  {
+    "id": "robot_vacuum_narwal_dust_bag_j3",
+    "type": "robot_vacuum",
+    "model": "Narwal-DB-J3",
+    "name": "Narwal robot vacuum dust bag J3 series",
+    "unit": "个",
+    "meta": {
+      "capacity": "2.5L",
+      "compatible": "J4/J5/Freo/逍遥 001/逍遥 002 自动集尘基座",
+      "material": "抗菌无纺布三层"
+    }
+  },
+  {
+    "id": "robot_vacuum_narwal_filter_j3",
+    "type": "robot_vacuum",
+    "model": "Narwal-FT-J3",
+    "name": "Narwal robot vacuum filter + activated carbon J3",
+    "unit": "个",
+    "meta": {
+      "compatible": "J3/J4/J5/Freo/Freo X/逍遥 001/002",
+      "material": "HEPA 11 + 活性炭除味层",
+      "washable": false
+    }
+  },
+  {
+    "id": "robot_vacuum_narwal_main_brush_j3",
+    "type": "robot_vacuum",
+    "model": "Narwal-MB-J3",
+    "name": "Narwal robot vacuum conical main brush J3",
+    "unit": "个",
+    "meta": {
+      "compatible": "J3/J4/J5/Freo/逍遥 001/逍遥 002",
+      "design": "锥形单臂主刷（防毛发缠绕专用）"
+    }
+  },
+  {
+    "id": "robot_vacuum_narwal_mop_track_j4",
+    "type": "robot_vacuum",
+    "model": "Narwal-MP-J4",
+    "name": "Narwal robot vacuum tracked mop pad J4",
+    "unit": "块",
+    "meta": {
+      "compatible": "J4/J5/Freo/逍遥 001/逍遥 002 (履带式热水洗)",
+      "material": "履带式编织纤维，耐磨耐热水"
+    }
+  },
+  {
+    "id": "robot_vacuum_narwal_side_brush_j2",
+    "type": "robot_vacuum",
+    "model": "Narwal-SB-J2",
+    "name": "Narwal robot vacuum side brush J2/J3/J4",
+    "unit": "个",
+    "meta": {
+      "compatible": "J2/J3/J4/J5/Freo/Freo X/逍遥系列",
+      "color_variants": "黄/蓝/白卡扣色，通用不影响安装"
+    }
+  },
+  {
+    "id": "robot_vacuum_roborock_cleaning_solution",
+    "type": "robot_vacuum",
+    "model": "Roborock-CL1",
+    "name": "Roborock robot vacuum cleaning solution",
+    "unit": "瓶",
+    "meta": {
+      "capacity": "1L",
+      "compatible": "S5/S6/S7/S8/G10/G10S/G20/P10/P10S 系列",
+      "feature": "原装品质，适合自动投放水箱"
+    }
+  },
+  {
+    "id": "robot_vacuum_roborock_dust_bag_g10",
+    "type": "robot_vacuum",
+    "model": "Roborock-DB-G10",
+    "name": "Roborock robot vacuum dust bag G10/S8 2.5L",
+    "unit": "个",
+    "meta": {
+      "capacity": "2.5L",
+      "compatible": "G10S/G10S Pro/G20/P10/P10S Pro/S7 MaxV Ultra/S8/S8+ 自动集尘站",
+      "material": "高密度无纺布"
+    }
+  },
+  {
+    "id": "robot_vacuum_roborock_filter_g10",
+    "type": "robot_vacuum",
+    "model": "Roborock-FT-G10",
+    "name": "Roborock robot vacuum washable filter G10",
+    "unit": "个",
+    "meta": {
+      "compatible": "S5 Max/S6 MaxV/S7/G10/G20/P10/S8 系列",
+      "material": "E12 级可水洗 HEPA"
+    }
+  },
+  {
+    "id": "robot_vacuum_roborock_main_brush_g10",
+    "type": "robot_vacuum",
+    "model": "Roborock-MB-G10",
+    "name": "Roborock robot vacuum anti-wrap main brush G10",
+    "unit": "个",
+    "meta": {
+      "compatible": "G10/G10S/G20/P10/P10S/S7/S8 系列",
+      "design": "浮动全胶刷 + 毛刷 双款可用"
+    }
+  },
+  {
+    "id": "robot_vacuum_roborock_mop_cloth_g10",
+    "type": "robot_vacuum",
+    "model": "Roborock-MC-G10",
+    "name": "Roborock robot vacuum sonic mop cloth G10",
+    "unit": "块",
+    "meta": {
+      "compatible": "G10/G20/P10/S7/S8 系列（声波震动拖板）",
+      "material": "双层纤维，强吸水耐磨"
+    }
+  },
+  {
+    "id": "robot_vacuum_roborock_side_brush_g10",
+    "type": "robot_vacuum",
+    "model": "Roborock-SB-G10",
+    "name": "Roborock robot vacuum 6-claw side brush G10",
+    "unit": "个",
+    "meta": {
+      "compatible": "S7/G10/G20/P10/P10S/S8 系列",
+      "design": "6爪毛刷（旧款 5爪也兼容安装）"
+    }
+  },
+  {
     "id": "robot_vacuum_side_brush",
     "type": "robot_vacuum",
     "model": "side_brush",
     "name": "Robot vacuum side brush",
     "unit": "个",
     "meta": {}
+  },
+  {
+    "id": "robot_vacuum_xiaomi_dust_bag_1s",
+    "type": "robot_vacuum",
+    "model": "Xiaomi-DB-S7",
+    "name": "Xiaomi Mi robot vacuum dust bag S7 series",
+    "unit": "个",
+    "meta": {
+      "capacity": "1.8L",
+      "compatible": "石头 S7/S7 MaxV 自动集尘基座 / 米家全能扫拖机器人 M40/M30 集尘站",
+      "material": "无纺布双层"
+    }
+  },
+  {
+    "id": "robot_vacuum_xiaomi_filter_hepa_1s",
+    "type": "robot_vacuum",
+    "model": "Xiaomi-FT-1S",
+    "name": "Xiaomi Mi robot vacuum HEPA filter S5/S6",
+    "unit": "个",
+    "meta": {
+      "compatible": "米家 1代/1S/2代/石头 S5/S6 series",
+      "material": "可水洗 HEPA 滤网"
+    }
+  },
+  {
+    "id": "robot_vacuum_xiaomi_main_brush_1s",
+    "type": "robot_vacuum",
+    "model": "Xiaomi-MB-1S",
+    "name": "Xiaomi Mi robot vacuum main brush S5/S6",
+    "unit": "个",
+    "meta": {
+      "compatible": "米家扫地机 1/1S/2代 / 石头 S5/S6/S5 Max series",
+      "design": "标准毛刷滚刷"
+    }
+  },
+  {
+    "id": "robot_vacuum_xiaomi_mop_cloth_1s",
+    "type": "robot_vacuum",
+    "model": "Xiaomi-MC-1S",
+    "name": "Xiaomi Mi robot vacuum mop cloth S5/S6",
+    "unit": "块",
+    "meta": {
+      "compatible": "米家扫拖 1T / 石头 S5/S6/S7 基础款"
+    }
+  },
+  {
+    "id": "robot_vacuum_xiaomi_side_brush_1s",
+    "type": "robot_vacuum",
+    "model": "Xiaomi-SB-1S",
+    "name": "Xiaomi Mi robot vacuum 5-claw side brush",
+    "unit": "个",
+    "meta": {
+      "compatible": "米家 1/1S/2代/石头 S5/S6/S7 系列",
+      "design": "5爪毛刷"
+    }
+  },
+  {
+    "id": "water_purifier_compound_pp_cto",
+    "type": "water_purifier",
+    "model": "PP+CTO复合",
+    "name": "Compound PP + CTO pre-filter",
+    "unit": "支",
+    "meta": {
+      "stage": "复合级（PP棉+压缩炭二合一）",
+      "material": "PP熔喷+压缩活性炭",
+      "replace_months": "6-12",
+      "application": "厨下直饮 / 前置过滤"
+    }
+  },
+  {
+    "id": "water_purifier_cto_compressed_carbon",
+    "type": "water_purifier",
+    "model": "CTO压缩活性炭",
+    "name": "CTO compressed activated carbon block",
+    "unit": "支",
+    "meta": {
+      "stage": "精密前置炭",
+      "material": "压缩活性炭棒 CTO",
+      "replace_months": "6-12",
+      "remove": "余氯、异色、异味、部分有机物"
+    }
+  },
+  {
+    "id": "water_purifier_disinfectant_cleaner",
+    "type": "water_purifier",
+    "model": "净水器管道消毒清洁剂",
+    "name": "Water purifier pipeline disinfectant cleaner",
+    "unit": "瓶",
+    "meta": {
+      "application": "滤芯更换时清洗滤瓶、管路、后置炭残留",
+      "grade": "食品级柠檬酸/过氧乙酸类",
+      "volume_ml": "500"
+    }
+  },
+  {
+    "id": "water_purifier_post_carbon",
+    "type": "water_purifier",
+    "model": "4号-后置活性炭",
+    "name": "Xiaomi water purifier post-carbon filter",
+    "unit": "支",
+    "meta": {
+      "stage": "第四级",
+      "material": "后置活性炭"
+    }
   },
   {
     "id": "water_purifier_pp",
@@ -128,14 +1254,98 @@
     }
   },
   {
+    "id": "water_purifier_pre_carbon",
+    "type": "water_purifier",
+    "model": "2号-前置活性炭",
+    "name": "Xiaomi water purifier pre-carbon filter",
+    "unit": "支",
+    "meta": {
+      "stage": "第二级",
+      "material": "颗粒活性炭"
+    }
+  },
+  {
     "id": "water_purifier_ro",
     "type": "water_purifier",
     "model": "RO-膜",
     "name": "RO reverse osmosis membrane",
     "unit": "支",
     "meta": {
-      "stage": "第四级",
+      "stage": "第三级",
       "material": "复合反渗透"
+    }
+  },
+  {
+    "id": "water_purifier_ro_400g_general",
+    "type": "water_purifier",
+    "model": "RO 400G 通用膜",
+    "name": "General 400GPD RO membrane (1812-400)",
+    "unit": "支",
+    "meta": {
+      "stage": "反渗透级",
+      "material": "聚酰胺复合膜 TFC",
+      "gpd": 400,
+      "desalination_rate": "≥96%",
+      "replace_months": "24-36",
+      "compatible": "市面 400G 无桶净水器通用（汇通/陶氏/时代沃顿 1812-400 规格）"
+    }
+  },
+  {
+    "id": "water_purifier_ro_600g_general",
+    "type": "water_purifier",
+    "model": "RO 600G 通用膜",
+    "name": "General 600GPD RO membrane (3012-600)",
+    "unit": "支",
+    "meta": {
+      "stage": "反渗透级",
+      "material": "聚酰胺复合膜 TFC",
+      "gpd": 600,
+      "desalination_rate": "≥96%",
+      "replace_months": "24-36",
+      "compatible": "市面 600G 大流量净水器（3012-600 规格）"
+    }
+  },
+  {
+    "id": "water_purifier_ro_75g_general",
+    "type": "water_purifier",
+    "model": "RO 75G 通用膜",
+    "name": "General 75GPD RO membrane (1812-75)",
+    "unit": "支",
+    "meta": {
+      "stage": "反渗透级",
+      "material": "聚酰胺复合膜 TFC",
+      "gpd": 75,
+      "desalination_rate": "≥96%",
+      "replace_months": "24-36",
+      "compatible": "传统有桶 50G/75G 厨下净水器（1812-75 规格）"
+    }
+  },
+  {
+    "id": "water_purifier_t33_post_carbon",
+    "type": "water_purifier",
+    "model": "T33 后置活性炭滤芯",
+    "name": "T33 in-line post-carbon polishing filter",
+    "unit": "支",
+    "meta": {
+      "stage": "末端精制级",
+      "material": "椰壳颗粒活性炭 / 烧结炭",
+      "replace_months": "6-12",
+      "application": "改善出水口感、去除残留氯味、抑制细菌滋生"
+    }
+  },
+  {
+    "id": "water_purifier_uf_membrane",
+    "type": "water_purifier",
+    "model": "UF 超滤膜滤芯",
+    "name": "UF ultrafiltration membrane (hollow fiber)",
+    "unit": "支",
+    "meta": {
+      "stage": "超滤级（非RO）",
+      "material": "PVDF/PAN 中空纤维超滤膜",
+      "pore_size_um": "0.01",
+      "replace_months": "12-24",
+      "application": "保留矿物质的直饮 / 中央前置 / 商用机",
+      "washable": true
     }
   }
 ]

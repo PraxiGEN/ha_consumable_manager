@@ -50,8 +50,11 @@
     ],
     "name": "Roborock S5 robot vacuum",
     "consumables": [
-      "robot_vacuum_side_brush",
-      "robot_vacuum_mop"
+      "robot_vacuum_dust_bag",
+      "robot_vacuum_filter",
+      "robot_vacuum_main_brush",
+      "robot_vacuum_mop",
+      "robot_vacuum_side_brush"
     ]
   },
   {
@@ -88,21 +91,55 @@
   {
     "manufacturer": "Xiaomi",
     "models": [
-      "zhimi.airpurifier.m1"
+      "zhimi.airp.mb5",
+      "zhimi.airp.mp4"
     ],
-    "name": "Mi Air Purifier 1",
+    "name": "Mi Air Purifier 4",
     "consumables": [
-      "filter_hepa13"
+      "filter_xiaomi_airpurifier_4"
     ]
   },
   {
     "manufacturer": "Xiaomi",
     "models": [
+      "zhimi.airp.rma2",
+      "zhimi.airp.rma3"
+    ],
+    "name": "Mi Air Purifier 4 Lite",
+    "consumables": [
+      "filter_xiaomi_airpurifier_4"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airp.sa4"
+    ],
+    "name": "Mi Air Purifier 4 Max",
+    "consumables": [
+      "filter_xiaomi_airpurifier_max"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airp.va2a",
+      "zhimi.airp.vb4"
+    ],
+    "name": "Mi Air Purifier 4 Pro",
+    "consumables": [
+      "filter_xiaomi_airpurifier_4pro"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airpurifier.m1",
       "zhimi.airpurifier.m2"
     ],
-    "name": "Mi Air Purifier 2",
+    "name": "Mi Air Purifier 1/2",
     "consumables": [
-      "filter_hepa13"
+      "filter_xiaomi_airpurifier_2"
     ]
   },
   {
@@ -110,9 +147,40 @@
     "models": [
       "zhimi.airpurifier.m3"
     ],
-    "name": "Mi Air Purifier 3",
+    "name": "Mi Air Purifier 3/3H",
     "consumables": [
-      "filter_hepa13"
+      "filter_xiaomi_airpurifier_3"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airpurifier.mb4"
+    ],
+    "name": "Mi Air Purifier 3C",
+    "consumables": [
+      "filter_xiaomi_airpurifier_3c"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.airpurifier.vb2"
+    ],
+    "name": "Mi Air Purifier Pro H",
+    "consumables": [
+      "filter_xiaomi_airpurifier_proh"
+    ]
+  },
+  {
+    "manufacturer": "Xiaomi",
+    "models": [
+      "zhimi.humidifier.cb1",
+      "zhimi.humidifier.ca4"
+    ],
+    "name": "Smartmi Evaporative Humidifier",
+    "consumables": [
+      "humidifier_smartmi_evap_pad"
     ]
   }
 ]
