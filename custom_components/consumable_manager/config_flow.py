@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import datetime
-import re
 from typing import Any
 from uuid import uuid4
 
@@ -18,7 +17,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import selector, translation
 
 from .const import (
-    DOMAIN, ADD_METHOD_CONSUMABLE, ADD_METHOD_CUSTOM, CONF_ADD_METHOD,
+    DOMAIN, ADD_METHOD_CONSUMABLE, ADD_METHOD_CUSTOM_CONSUMABLE, CONF_ADD_METHOD,
     CONF_CONSUMABLE_ID, CONF_ENTITY_REGEX, CONF_ENTRY_TYPE,
     CONF_ITEM_ID, CONF_ITEM_NAME, CONF_ITEM_TYPE, CONF_MODEL,
     CONF_NOTIFICATION, CONF_NOTIFY_CUSTOMIZE, CONF_NOTIFY_ENTITIES,
@@ -27,6 +26,9 @@ from .const import (
     NOTIFY_MODES,
     NOTIFY_STYLE_HUMAN, NOTIFY_STYLES, CONF_QUANTITY, CONF_REMOVE_ITEMS, CONF_SELECTED_ITEM,
     CONF_SOURCE_ENTITIES, CONF_STOCK_ITEMS, CONF_STOCK_THRESHOLD,
+    CONF_BINDING_GROUPS, CONF_ADDED_AT, CONF_GROUP_ID, CONF_GROUP_KIND,
+    CONF_GROUP_NAME, GROUP_KIND_BINDING, GROUP_KIND_CUSTOM,
+    CONF_SELECTED_GROUP, CONF_REMOVE_GROUPS,
     CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR, CONF_THRESHOLD_TYPE,
     CONF_THRESHOLD_UNIT, CONF_UNIT, DEFAULT_THRESHOLD,
     DEFAULT_THRESHOLD_TYPE, DEFAULT_THRESHOLD_UNIT, ENTRY_SORT_PREFIXES,
@@ -34,6 +36,7 @@ from .const import (
     CONF_TYPE_KEY, CONF_TYPE_NAME_ZH, CONF_TYPE_ICON,CONF_TYPE_THRESHOLD_TYPE,
     CONF_TYPE_THRESHOLD, CONF_TYPE_THRESHOLD_UNIT, OPERATORS,
     THRESHOLD_DEFAULT_OPERATOR, THRESHOLD_TYPES, THRESHOLD_UNIT_OPTIONS,
+    THRESHOLD_TYPE_USED_TIME, OPERATOR_GREATER_THAN, UNIT_DAYS,
 )
 from .library import Consumable, ID_PATTERN, Library
 from .user_library import (
@@ -383,9 +386,13 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             return await self.async_step_notification(user_input)
 
         if not self._is_stock_entry:
+            # 耗材类型条目：像库存一样，1级菜单直接列出分组管理各项
+            menu_options = ["add_group"]
+            if self._current_groups():
+                menu_options += ["select_group", "remove_groups"]
+            menu_options += ["threshold", "notification"]
             return self.async_show_menu(
-                step_id="init",
-                menu_options=["entities", "threshold", "notification"],
+                step_id="init", menu_options=menu_options
             )
 
         menu_options = ["add_item"]
@@ -395,67 +402,358 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
         menu_options.append("notification")
         return self.async_show_menu(step_id="init", menu_options=menu_options)
 
-    # ---- 耗材类型条目：管理实体 + 阈值 ----
-    def _current_entity_ids(self) -> list[str]:
-        """当前已绑定的实体 id（预填多选）。"""
+    # ---- 耗材类型条目：绑定分组（多分组 → 多诊断实体）----
+    def _current_groups(self) -> list[dict[str, Any]]:
+        """当前分组列表（已存 binding_groups，或扁平 source_entities 合成默认组）。"""
+        stored = self.config_entry.options.get(CONF_BINDING_GROUPS)
+        if stored:
+            return [dict(g) for g in stored]
+        flat = self.config_entry.options.get(CONF_SOURCE_ENTITIES, [])
+        if flat:
+            return [{
+                CONF_GROUP_ID: "default",
+                CONF_GROUP_NAME: self.config_entry.title,
+                CONF_SOURCE_ENTITIES: list(flat),
+            }]
+        return []
+
+    def _save_groups(self, groups: list[dict[str, Any]]) -> ConfigFlowResult:
+        """写回分组列表（规范化到 binding_groups，清理旧扁平键）。"""
+        options = dict(self.config_entry.options)
+        if groups:
+            options[CONF_BINDING_GROUPS] = groups
+            options.pop(CONF_SOURCE_ENTITIES, None)
+        else:
+            options.pop(CONF_BINDING_GROUPS, None)
+            options.pop(CONF_SOURCE_ENTITIES, None)
+        return self._save(options)
+
+    def _group_options(self) -> list[dict[str, str]]:
+        """分组下拉选项（label = 分组名，value = group_id）。"""
         return [
-            snapshot["entity_id"]
-            for snapshot in self.config_entry.options.get(
-                CONF_SOURCE_ENTITIES, []
-            )
-            if snapshot.get("entity_id")
+            {
+                "label": g.get(CONF_GROUP_NAME, "未命名"),
+                "value": g.get(CONF_GROUP_ID, ""),
+            }
+            for g in self._current_groups()
         ]
 
-    def _match_entities_by_regex(self, regex: str) -> list[str]:
-        """用正则匹配 entity_id（一次性批量选择，排除已禁用实体）。"""
-        regex = (regex or "").strip()
-        if not regex:
-            return []
-        try:
-            pattern = re.compile(regex)
-        except re.error:
-            return []
-        ent_reg = er.async_get(self.hass)
-        return [
-            entity_id
-            for entity_id, entry in ent_reg.entities.items()
-            if (
-                not entry.disabled_by
-                and entity_id.startswith("sensor.")
-                and pattern.search(entity_id)
-            )
-        ]
-
-    async def async_step_entities(self,
+    async def async_step_add_group(self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """管理耗材实体：正则（优先）匹配 + 实体多选，提交取并集。"""
+        """新建分组（菜单项）：先选分组类别，再进入对应表单。
+
+        - 绑定实体：常规分组表单（绑定传感器 / 群组）
+        - 自定义耗材实体：自建数据（名称 + 添加时间 + 已使用时长阈值）
+        """
         if user_input is not None:
-            manual = list(user_input.get(CONF_SOURCE_ENTITIES, []))
-            regex = str(user_input.get(CONF_ENTITY_REGEX, "") or "")
-            entity_ids = set(manual)
-            entity_ids.update(self._match_entities_by_regex(regex))
-            options = dict(self.config_entry.options)
-            options[CONF_SOURCE_ENTITIES] = build_source_snapshots(
-                self.hass, sorted(entity_ids)
-            )
-            return self._save(options)
+            self._group_edit_idx = None
+            kind = user_input.get(CONF_GROUP_KIND, GROUP_KIND_BINDING)
+            if kind == GROUP_KIND_CUSTOM:
+                return await self.async_step_custom_entity()
+            return await self.async_step_group()
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_GROUP_KIND, default=GROUP_KIND_BINDING
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {
+                                "label": "绑定实体",
+                                "value": GROUP_KIND_BINDING,
+                            },
+                            {
+                                "label": "自定义耗材实体",
+                                "value": GROUP_KIND_CUSTOM,
+                            },
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(step_id="add_group", data_schema=schema)
+
+    async def async_step_select_group(self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """修改分组：先选一个分组，再进入对应编辑表单（仿库存 select_item）。"""
+        if user_input is not None:
+            gid = user_input[CONF_SELECTED_GROUP]
+            for i, g in enumerate(self._current_groups()):
+                if g.get(CONF_GROUP_ID) == gid:
+                    self._group_edit_idx = i
+                    break
+            if g.get(CONF_GROUP_KIND) == GROUP_KIND_CUSTOM:
+                return await self.async_step_custom_entity()
+            return await self.async_step_group()
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_SELECTED_GROUP): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=self._group_options(),
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="select_group", data_schema=schema
+        )
+
+    async def async_step_remove_groups(self,
+        user_input: dict[str, Any] | None = None,
+    ) -> ConfigFlowResult:
+        """删除分组（多选，仿库存 remove_items）。"""
+        if user_input is not None:
+            removing = set(user_input.get(CONF_REMOVE_GROUPS, []))
+            groups = [
+                g for g in self._current_groups()
+                if g.get(CONF_GROUP_ID) not in removing
+            ]
+            return self._save_groups(groups)
 
         schema = vol.Schema(
             {
                 vol.Optional(
-                    CONF_ENTITY_REGEX, default=""
+                    CONF_REMOVE_GROUPS, default=[]
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=self._group_options(),
+                        multiple=True,
+                        mode=selector.SelectSelectorMode.LIST,
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="remove_groups", data_schema=schema
+        )
+
+    async def async_step_group(self,
+        user_input: dict[str, Any] | None = None,
+        idx: int | None = None,
+    ) -> ConfigFlowResult:
+        """新增/编辑单个分组：名称 + 实体 + 可选阈值覆盖。"""
+        errors: dict[str, str] = {}
+        # HA 数据流始终以 user_input 作为第一个位置参数传入；
+        # 编辑态的索引通过关键字或实例属性跨「展示表单 → 提交表单」传递。
+        if idx is not None:
+            self._group_edit_idx = idx
+        groups = self._current_groups()
+        edit_idx = getattr(self, "_group_edit_idx", None)
+        editing = edit_idx is not None and 0 <= edit_idx < len(groups)
+        group = groups[edit_idx] if editing else {}
+
+        if user_input is not None:
+            name = str(user_input.get(CONF_GROUP_NAME) or "").strip()
+            if not name:
+                errors["name"] = "required"
+            else:
+                manual = list(user_input.get(CONF_SOURCE_ENTITIES, []))
+                regex = str(user_input.get(CONF_ENTITY_REGEX, "") or "")
+                new_group: dict[str, Any] = {
+                    CONF_GROUP_ID: group.get(CONF_GROUP_ID) or uuid4().hex[:8],
+                    CONF_GROUP_NAME: name,
+                    CONF_GROUP_KIND: GROUP_KIND_BINDING,
+                    CONF_SOURCE_ENTITIES: build_source_snapshots(
+                        self.hass, sorted(set(manual))
+                    ),
+                    # 正则仅存规则本身，运行时由协调器动态匹配（不再提交时合并）
+                    CONF_ENTITY_REGEX: regex,
+                }
+                if user_input.get("override_threshold"):
+                    new_group[CONF_THRESHOLD_TYPE] = user_input[CONF_THRESHOLD_TYPE]
+                    new_group[CONF_THRESHOLD] = user_input[CONF_THRESHOLD]
+                    new_group[CONF_THRESHOLD_UNIT] = user_input[CONF_THRESHOLD_UNIT]
+                    new_group[CONF_THRESHOLD_OPERATOR] = user_input[
+                        CONF_THRESHOLD_OPERATOR
+                    ]
+                if editing:
+                    groups[self._group_edit_idx] = new_group
+                else:
+                    groups.append(new_group)
+                return self._save_groups(groups)
+
+        # 预填值
+        default_name = group.get(CONF_GROUP_NAME, "")
+        default_entities = [
+            s["entity_id"]
+            for s in group.get(CONF_SOURCE_ENTITIES, [])
+            if s.get("entity_id")
+        ]
+        override_on = any(
+            k in group
+            for k in (CONF_THRESHOLD, CONF_THRESHOLD_TYPE, CONF_THRESHOLD_UNIT,
+                      CONF_THRESHOLD_OPERATOR)
+        )
+        # 阈值默认值兜底链：分组覆盖 → 库类型元数据 → 通用兜底
+        library = await self._library()
+        meta = library.type_meta(
+            self.config_entry.data.get(CONF_ENTRY_TYPE, "")
+        )
+        d_type = meta.default_threshold_type if meta else DEFAULT_THRESHOLD_TYPE
+        d_val = meta.default_threshold if meta else DEFAULT_THRESHOLD
+        d_unit = meta.default_threshold_unit if meta else DEFAULT_THRESHOLD_UNIT
+        t_type = group.get(CONF_THRESHOLD_TYPE, d_type)
+        t_val = group.get(CONF_THRESHOLD, d_val)
+        t_unit = group.get(CONF_THRESHOLD_UNIT, d_unit)
+        t_op = group.get(
+            CONF_THRESHOLD_OPERATOR, THRESHOLD_DEFAULT_OPERATOR[t_type]
+        )
+
+        threshold_type_options = [
+            {"label": t, "value": t} for t in THRESHOLD_TYPES
+        ]
+        threshold_unit_options = [
+            {"label": u, "value": u} for u in THRESHOLD_UNIT_OPTIONS
+        ]
+        operator_options = [
+            {"label": o, "value": o} for o in OPERATORS
+        ]
+
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_GROUP_NAME, default=default_name
                 ): selector.TextSelector(selector.TextSelectorConfig()),
                 vol.Optional(
-                    CONF_SOURCE_ENTITIES, default=self._current_entity_ids()
+                    CONF_ENTITY_REGEX, default=group.get(CONF_ENTITY_REGEX, "")
+                ): selector.TextSelector(selector.TextSelectorConfig()),
+                vol.Optional(
+                    CONF_SOURCE_ENTITIES, default=default_entities
                 ): selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain="sensor", multiple=True
                     )
                 ),
+                vol.Optional(
+                    "override_threshold", default=override_on
+                ): selector.BooleanSelector(),
+                vol.Optional(
+                    CONF_THRESHOLD_TYPE, default=t_type
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=threshold_type_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="threshold_type",
+                    )
+                ),
+                vol.Optional(
+                    CONF_THRESHOLD, default=t_val
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step="any", mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Optional(
+                    CONF_THRESHOLD_UNIT, default=t_unit
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=threshold_unit_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="threshold_unit",
+                    )
+                ),
+                vol.Optional(
+                    CONF_THRESHOLD_OPERATOR, default=t_op
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=operator_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="threshold_operator",
+                    )
+                ),
             }
         )
-        return self.async_show_form(step_id="entities", data_schema=schema)
+        return self.async_show_form(
+            step_id="group",
+            data_schema=schema,
+            errors=errors,
+        )
+
+    async def async_step_custom_entity(self,
+        user_input: dict[str, Any] | None = None,
+        idx: int | None = None,
+    ) -> ConfigFlowResult:
+        """自定义耗材实体：名称 + 添加时间 + 已使用时长阈值（自建数据 → 诊断实体）。"""
+        errors: dict[str, str] = {}
+        # HA 数据流始终以 user_input 作为第一个位置参数传入；
+        # 编辑态的索引通过关键字或实例属性跨「展示表单 → 提交表单」传递。
+        if idx is not None:
+            self._group_edit_idx = idx
+        groups = self._current_groups()
+        edit_idx = getattr(self, "_group_edit_idx", None)
+        editing = edit_idx is not None and 0 <= edit_idx < len(groups)
+        group = groups[edit_idx] if editing else {}
+
+        if user_input is not None:
+            name = str(user_input.get(CONF_GROUP_NAME) or "").strip()
+            added_at = user_input.get(CONF_ADDED_AT)
+            if not name:
+                errors["name"] = "required"
+            elif not added_at:
+                errors["added_at"] = "required"
+            else:
+                new_group: dict[str, Any] = {
+                    CONF_GROUP_ID: group.get(CONF_GROUP_ID) or uuid4().hex[:8],
+                    CONF_GROUP_NAME: name,
+                    CONF_GROUP_KIND: GROUP_KIND_CUSTOM,
+                    CONF_ADDED_AT: added_at,
+                    # 自定义分组阈值恒为「已使用时长」，大于阈值即触发
+                    CONF_THRESHOLD_TYPE: THRESHOLD_TYPE_USED_TIME,
+                    CONF_THRESHOLD: user_input[CONF_THRESHOLD],
+                    CONF_THRESHOLD_UNIT: user_input[CONF_THRESHOLD_UNIT],
+                    CONF_THRESHOLD_OPERATOR: OPERATOR_GREATER_THAN,
+                }
+                if editing:
+                    groups[self._group_edit_idx] = new_group
+                else:
+                    groups.append(new_group)
+                return self._save_groups(groups)
+
+        default_name = group.get(CONF_GROUP_NAME, self.config_entry.title)
+        default_added_at = group.get(
+            CONF_ADDED_AT, datetime.date.today().isoformat()
+        )
+        default_threshold = group.get(CONF_THRESHOLD, 180)
+        default_unit = group.get(CONF_THRESHOLD_UNIT, UNIT_DAYS)
+        threshold_unit_options = [
+            {"label": u, "value": u} for u in THRESHOLD_UNIT_OPTIONS
+        ]
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_GROUP_NAME, default=default_name
+                ): selector.TextSelector(selector.TextSelectorConfig()),
+                vol.Required(
+                    CONF_ADDED_AT, default=default_added_at
+                ): selector.DateSelector(),
+                vol.Required(
+                    CONF_THRESHOLD, default=default_threshold
+                ): selector.NumberSelector(
+                    selector.NumberSelectorConfig(
+                        min=0, step="any", mode=selector.NumberSelectorMode.BOX
+                    )
+                ),
+                vol.Required(
+                    CONF_THRESHOLD_UNIT, default=default_unit
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=threshold_unit_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                        translation_key="threshold_unit",
+                    )
+                ),
+            }
+        )
+        return self.async_show_form(
+            step_id="custom_entity",
+            data_schema=schema,
+            errors=errors,
+        )
 
     def _threshold_schema(self,
         threshold_type: str,
@@ -781,8 +1079,8 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
         if user_input is not None:
             self._item_type = user_input.get(CONF_ITEM_TYPE)
             method = user_input.get(CONF_ADD_METHOD, ADD_METHOD_CONSUMABLE)
-            if method == ADD_METHOD_CUSTOM:
-                return await self.async_step_custom()
+            if method == ADD_METHOD_CUSTOM_CONSUMABLE:
+                return await self.async_step_custom_stock_item()
             return await self.async_step_consumable()
 
         labels = await self._type_labels()
@@ -803,7 +1101,7 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
                     CONF_ADD_METHOD, default=ADD_METHOD_CONSUMABLE
                 ): selector.SelectSelector(
                     selector.SelectSelectorConfig(
-                        options=[ADD_METHOD_CONSUMABLE, ADD_METHOD_CUSTOM],
+                        options=[ADD_METHOD_CONSUMABLE, ADD_METHOD_CUSTOM_CONSUMABLE],
                         mode=selector.SelectSelectorMode.DROPDOWN,
                         translation_key="add_method",
                     )
@@ -875,10 +1173,10 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
         )
         return self.async_show_form(step_id="consumable", data_schema=schema)
 
-    async def async_step_custom(self,
+    async def async_step_custom_stock_item(self,
         user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
-        """自定义路线：完整手动表单；提交时写入用户库耗材段并回填 consumable_id。"""
+        """自定义耗材路线：完整手动表单；提交时写入用户库耗材段并回填 consumable_id。"""
         if user_input is not None:
             item_type = user_input.get(CONF_ITEM_TYPE) or ""
             name = str(user_input.get(CONF_ITEM_NAME, "")).strip()
@@ -902,7 +1200,7 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
 
         labels = await self._type_labels()
         return self.async_show_form(
-            step_id="custom",
+            step_id="custom_stock_item",
             data_schema=self._item_schema(
                 default_type=self._item_type,
                 type_options=self._type_dropdown_options(labels),

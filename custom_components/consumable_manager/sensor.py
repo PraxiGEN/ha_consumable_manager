@@ -1,6 +1,8 @@
 """耗材管理器 传感器平台。"""
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -14,6 +16,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from . import ConsumableManagerConfigEntry
 from .const import (
+    CONF_GROUP_ID,
+    CONF_GROUP_NAME,
     CONF_ITEM_ID,
     CONF_ITEM_NAME,
     CONF_ITEM_TYPE,
@@ -137,7 +141,7 @@ class StockStatusSensor(CoordinatorEntity[StockCoordinator], SensorEntity):
 class ReplaceStatusSensor(
     CoordinatorEntity[ConsumableTypeCoordinator], SensorEntity
 ):
-    """更换状态实体：主状态 = 正常 / 需要更换（枚举）。"""
+    """更换状态实体：主状态 = 正常 / 需要更换（枚举），按分组独立生成。"""
 
     _attr_has_entity_name = True
 
@@ -145,23 +149,28 @@ class ReplaceStatusSensor(
         self,
         coordinator: ConsumableTypeCoordinator,
         description: SensorEntityDescription,
+        group: dict[str, Any],
     ) -> None:
         super().__init__(coordinator)
         self.entity_description = description
-        self._attr_unique_id = f"{coordinator.entry_id}_{description.key}"
+        self._group = group
+        group_id = group.get(CONF_GROUP_ID, "default")
+        self._attr_unique_id = f"{coordinator.entry_id}_grp_{group_id}"
         self._attr_device_info = coordinator.device_info
+        # 实体名 = 分组名（设备为该条目类型），各组互不重名
+        self._attr_name = group.get(CONF_GROUP_NAME) or "默认"
 
     @property
     def native_value(self) -> str:
-        return self.coordinator.replace_status
+        return self.coordinator.group_status(self._group)
 
     @property
     def icon(self) -> str:
-        return _ICON_BY_STATE[self.coordinator.replace_status]
+        return _ICON_BY_STATE[self.coordinator.group_status(self._group)]
 
     @property
     def extra_state_attributes(self) -> dict:
-        return self.coordinator.status_attributes()
+        return self.coordinator.group_attributes(self._group)
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -200,8 +209,12 @@ async def async_setup_entry(
     # 通知条目（BaseCoordinator，无实体）与其余未配置条目不生成实体
     if not isinstance(coordinator, ConsumableTypeCoordinator):
         return
-    if not coordinator.source_entities:
+    groups = coordinator.groups
+    if not groups:
         return
     async_add_entities(
-        [ReplaceStatusSensor(coordinator, REPLACE_STATUS_DESCRIPTION)]
+        [
+            ReplaceStatusSensor(coordinator, REPLACE_STATUS_DESCRIPTION, group)
+            for group in groups
+        ]
     )

@@ -41,7 +41,7 @@
         "ink": "打印机耗材",
         "robot_vacuum": "扫地机耗材",
         "water_purifier": "净水器耗材",
-        "custom": "自定义类型",
+        "custom_type": "自定义类型",
         "notification": "通知渠道设置",
         "stock": "耗材库存管理"
       }
@@ -104,7 +104,7 @@
     "add_method": {
       "options": {
         "consumable": "常用耗材",
-        "custom": "自定义"
+        "custom_consumable": "自定义耗材"
       }
     },
     "service_action": {
@@ -127,7 +127,7 @@
     "step": {
       "add_item": {
         "title": "添加库存",
-        "description": "选择关联耗材类型（必选）与添加方式：从耗材库选常用耗材，或自定义。",
+        "description": "选择关联耗材类型（必选）与添加方式：从耗材库选常用耗材，或自定义耗材。",
         "data": {
           "add_method": "添加方式",
           "item_type": "关联耗材类型"
@@ -142,7 +142,7 @@
           "stock_threshold": "库存阈值"
         }
       },
-      "custom": {
+      "custom_stock_item": {
         "title": "自定义库存项",
         "description": "自定义一个库存项（名称、关联类型、型号、单位、数量、库存阈值，除规格信息外均必填）；ID 按「类型+型号」自动生成并写入用户库，供「常用耗材」复用。",
         "data": {
@@ -162,22 +162,61 @@
         "description": "修改库存项「{name}」（仅数量与库存阈值可改，名称、型号等请在删除后重新添加）。",
         "title": "修改库存项"
       },
-      "entities": {
+      "add_group": {
+        "title": "新建分组",
+        "description": "选择分组类别：绑定实体（关联传感器/群组，按实体值评估）或自定义耗材实体（自建数据，按已使用时长生成诊断实体）。",
         "data": {
-          "entity_regex": "正则匹配实体 ID（可选）",
-          "source_entities": "耗材实体"
-        },
-        "description": "正则匹配实体 ID（优先）与手动多选取并集；也可选择辅助元素中的群组，群组内实体将自动展开逐个监控（群组变化动态跟随）。",
-        "title": "管理耗材实体"
+          "kind": "分组类别"
+        }
+      },
+      "custom_entity": {
+        "title": "自定义耗材实体",
+        "description": "自建一条耗材数据：名称（默认即当前耗材条目）、添加/更换时间，以及已使用时长阈值；保存后直接生成对应的更换状态诊断实体（不绑定任何实体）。",
+        "data": {
+          "name": "名称",
+          "added_at": "添加时间",
+          "threshold": "寿命阈值",
+          "threshold_unit": "单位"
+        }
+      },
+      "select_group": {
+        "title": "修改分组",
+        "description": "选择要修改的分组。",
+        "data": {
+          "selected_group": "分组"
+        }
+      },
+      "remove_groups": {
+        "title": "删除分组",
+        "description": "勾选要删除的分组（可多选）。",
+        "data": {
+          "remove_groups": "删除的分组"
+        }
+      },
+      "group": {
+        "title": "分组设置",
+        "description": "设置分组名称与绑定实体：手动多选 + 正则规则（可选）。正则规则在运行时动态匹配当前实体 ID，新增匹配实体自动入组；手动与正则取并集。可勾选覆盖条目级阈值，为当前分组单独设定阈值。",
+        "data": {
+          "name": "分组名称",
+          "entity_regex": "正则规则（可选）：运行时动态匹配实体 ID，新增匹配实体自动入组。",
+          "source_entities": "耗材实体",
+          "override_threshold": "覆盖条目级阈值",
+          "threshold_type": "阈值类型",
+          "threshold": "阈值",
+          "threshold_unit": "单位",
+          "threshold_operator": "计算方式"
+        }
       },
       "init": {
         "description": "选择要执行的操作。",
         "menu_options": {
           "add_item": "添加库存",
-          "entities": "管理耗材实体",
+          "add_group": "新建分组",
           "notification": "通知渠道设置",
           "remove_items": "删除库存",
+          "remove_groups": "删除分组",
           "select_item": "修改库存",
+          "select_group": "修改分组",
           "threshold": "设置阈值"
         },
         "title": "耗材管理"
@@ -241,6 +280,12 @@
           },
           "last_replaced": {
             "name": "上次更换"
+          },
+          "added_at": {
+            "name": "添加时间"
+          },
+          "elapsed": {
+            "name": "已用时长"
           },
           "source_entities": {
             "name": "绑定实体"
@@ -350,7 +395,7 @@
         },
         "record_device": {
           "name": "记入设备映射",
-          "description": "同时将「厂商+型号→耗材」合并追加进用户库设备映射（不覆盖既有）"
+          "description": "同时将「厂商+型号到耗材」合并追加进用户库设备映射（不覆盖既有）"
         }
       }
     },

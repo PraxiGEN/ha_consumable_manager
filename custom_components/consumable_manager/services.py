@@ -1,6 +1,7 @@
 """耗材管理器 服务平台。"""
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any
 
@@ -15,8 +16,9 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import SupportsResponse
 
 from .const import (
-    DOMAIN, CONF_CONSUMABLE_ID, CONF_ITEM_ID, CONF_ITEM_NAME,
-    CONF_ITEM_TYPE, CONF_SOURCE_ENTITIES, CONF_STOCK_ITEMS,
+    DOMAIN, CONF_BINDING_GROUPS, CONF_CONSUMABLE_ID, CONF_GROUP_ID,
+    CONF_GROUP_NAME, CONF_ITEM_ID, CONF_ITEM_NAME, CONF_ITEM_TYPE,
+    CONF_SOURCE_ENTITIES, CONF_STOCK_ITEMS,
     ENTRY_TYPE_STOCK, THRESHOLD_TYPES, THRESHOLD_UNIT_OPTIONS,
 )
 from .coordinator import (
@@ -178,20 +180,40 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
         )
     # 把解析到的具体耗材 id 写入快照，供「查询绑定」回显耗材型号
     options = dict(coord.options)
-    existing = coord.source_snapshots
+    groups = copy.deepcopy(coord.groups)
     new_snap = build_source_snapshots(hass, [entity_id])[0]
     new_snap["consumable_id"] = consumable.id
-    if entity_id in coord.source_entities:
-        # 已绑定：更新既有快照的耗材型号（重绑场景）
-        merged: list[dict[str, Any]] = []
-        for s in existing:
-            if s.get("entity_id") == entity_id:
-                merged.append({**s, "consumable_id": consumable.id})
-            else:
-                merged.append(s)
-        options[CONF_SOURCE_ENTITIES] = merged
-    else:
-        options[CONF_SOURCE_ENTITIES] = existing + [new_snap]
+    # 目标分组：显式 group_id 优先；否则首个分组（无则建默认组）
+    target_gid = call.data.get("group_id")
+    target = (
+        next((g for g in groups if g.get(CONF_GROUP_ID) == target_gid), None)
+        if target_gid
+        else None
+    )
+    if target is None:
+        target = (
+            groups[0]
+            if groups
+            else {
+                CONF_GROUP_ID: "default",
+                CONF_GROUP_NAME: coord.title or "默认",
+                CONF_SOURCE_ENTITIES: [],
+            }
+        )
+        if not groups:
+            groups.append(target)
+    # 在目标分组内更新或追加快照（避免改到条目原始 options）
+    snaps = target.setdefault(CONF_SOURCE_ENTITIES, [])
+    found = False
+    for s in snaps:
+        if s.get("entity_id") == entity_id:
+            s["consumable_id"] = consumable.id
+            found = True
+            break
+    if not found:
+        snaps.append(new_snap)
+    options[CONF_BINDING_GROUPS] = groups
+    options.pop(CONF_SOURCE_ENTITIES, None)
     hass.config_entries.async_update_entry(coord.entry, options=options)
     await coord.async_request_refresh()
 
@@ -302,6 +324,11 @@ async def async_query_binding(hass: HomeAssistant,
         if filter_type and coord.cons_type != filter_type:
             continue
         triggered = set(coord.triggered_entities())
+        group_of = {
+            s.get("entity_id"): g.get(CONF_GROUP_NAME)
+            for g in coord.groups
+            for s in g.get(CONF_SOURCE_ENTITIES, [])
+        }
         for snapshot in coord.source_snapshots:
             sid = snapshot.get("entity_id")
             if entity_id and sid != entity_id:
@@ -319,6 +346,7 @@ async def async_query_binding(hass: HomeAssistant,
                 {
                     "entry_type": coord.cons_type,
                     "entity_id": sid,
+                    "group": group_of.get(sid),
                     "consumable_id": cid,
                     "consumable_model": cmodel,
                     "consumable_name": cname,
@@ -362,23 +390,32 @@ async def async_unbind_entity(hass: HomeAssistant,
 
     removed: list[dict[str, Any]] = []
     for coord in _type_coordinators(hass):
-        existing = coord.source_snapshots
+        groups = copy.deepcopy(coord.groups)
         if not any(
-            s.get("entity_id") == entity_id for s in existing
+            s.get("entity_id") == entity_id
+            for g in groups
+            for s in g.get(CONF_SOURCE_ENTITIES, [])
         ):
             continue
-        # 记录被摘除条目绑定的耗材（用于回执），随后整体过滤掉该实体
-        bound_cid = next(
-            (s.get("consumable_id")
-             for s in existing
-             if s.get("entity_id") == entity_id),
-            None,
-        )
+        # 记录被摘除条目绑定的耗材（用于回执），从含该实体的分组中过滤掉
+        bound_cid = None
+        for g in groups:
+            snaps = g.get(CONF_SOURCE_ENTITIES, [])
+            for s in snaps:
+                if s.get("entity_id") == entity_id:
+                    bound_cid = s.get("consumable_id")
+            g[CONF_SOURCE_ENTITIES] = [
+                s for s in snaps if s.get("entity_id") != entity_id
+            ]
+        # 空分组直接丢弃（避免遗留无实体的诊断实体）
+        groups = [g for g in groups if g.get(CONF_SOURCE_ENTITIES)]
         options = dict(coord.options)
-        options[CONF_SOURCE_ENTITIES] = [
-            s for s in existing
-            if s.get("entity_id") != entity_id
-        ]
+        if groups:
+            options[CONF_BINDING_GROUPS] = groups
+            options.pop(CONF_SOURCE_ENTITIES, None)
+        else:
+            options.pop(CONF_BINDING_GROUPS, None)
+            options.pop(CONF_SOURCE_ENTITIES, None)
         hass.config_entries.async_update_entry(coord.entry, options=options)
         await coord.async_request_refresh()
         removed.append(

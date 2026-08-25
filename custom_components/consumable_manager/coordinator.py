@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone, timedelta
 import json
+import re
 from typing import Any, Callable, Final, Literal
 from uuid import uuid4
 
@@ -20,7 +21,9 @@ from homeassistant.util.dt import as_local
 from .const import (
     DOMAIN, LOGGER, CONF_ENTRY_TYPE, CONF_ITEM_ID, CONF_ITEM_NAME,
     CONF_ITEM_TYPE, CONF_LAST_REPLACED, CONF_LAST_TRIGGERED_SIG, CONF_MODEL,
-    CONF_NOTIFY_MODE, CONF_NOTIFY_STYLE, CONF_QUANTITY, CONF_SOURCE_ENTITIES,
+    CONF_ADDED_AT, CONF_BINDING_GROUPS, CONF_GROUP_ID, CONF_GROUP_KIND,
+    CONF_GROUP_NAME, GROUP_KIND_CUSTOM, CONF_NOTIFY_MODE,
+    CONF_NOTIFY_STYLE, CONF_QUANTITY, CONF_SOURCE_ENTITIES, CONF_ENTITY_REGEX,
     CONF_STOCK_ITEMS, CONF_STOCK_THRESHOLD, CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR,
     CONF_THRESHOLD_TYPE, CONF_THRESHOLD_UNIT, CONF_UNIT, DEFAULT_THRESHOLD,
     DEFAULT_THRESHOLD_TYPE, DEFAULT_THRESHOLD_UNIT, ENTRY_SORT_PREFIXES,
@@ -759,13 +762,129 @@ class ConsumableTypeCoordinator(BaseCoordinator):
 
     @property
     def entity_signature(self) -> tuple[str, ...]:
-        """未绑定任何实体时不生成实体。"""
-        return ("replace_status",) if self.source_entities else ()
+        """按分组生成诊断实体键（分组增删触发重载，重命名不触发漂移）。"""
+        groups = self.groups
+        if not groups:
+            return ()
+        return tuple(
+            f"replace_status:{g.get(CONF_GROUP_ID, i)}"
+            for i, g in enumerate(groups)
+        )
 
-    # ---- 绑定实体（支持群组：运行时展开成员，动态跟随）----
+    # ---- 绑定分组（多分组 → 多诊断实体；旧扁平 source_entities 向后兼容）----
+    @property
+    def groups(self) -> list[dict[str, Any]]:
+        """本条目绑定分组列表（每个分组 = 一组源实体 + 可选阈值覆盖）。
+
+        旧条目仅存扁平 CONF_SOURCE_ENTITIES 时，合成单「默认」分组
+        （只读，不写回）；写操作一律经 config_flow / services 规范化到
+        CONF_BINDING_GROUPS 后再落盘。
+        """
+        stored = self._entry.options.get(CONF_BINDING_GROUPS)
+        if stored:
+            return [dict(g) for g in stored]
+        flat = list(self._entry.options.get(CONF_SOURCE_ENTITIES, []))
+        if flat:
+            return [
+                {
+                    CONF_GROUP_ID: "default",
+                    CONF_GROUP_NAME: self.title or "默认",
+                    CONF_SOURCE_ENTITIES: flat,
+                }
+            ]
+        return []
+
     @property
     def source_snapshots(self) -> list[dict[str, Any]]:
-        return list(self._entry.options.get(CONF_SOURCE_ENTITIES, []))
+        """全部分组的源实体快照并集（待办/订阅/通知/摘要统一读这份；含正则动态成员）。"""
+        result: list[dict[str, Any]] = []
+        for group in self.groups:
+            if self._group_is_custom(group):
+                continue
+            manual = {
+                s["entity_id"]: s
+                for s in group.get(CONF_SOURCE_ENTITIES, [])
+                if s.get("entity_id")
+            }
+            for eid in self._group_live_entities(group):
+                if eid in manual:
+                    result.append(manual[eid])
+                else:
+                    result.append(self._entity_snapshot(eid))
+        return result
+
+    def _entity_snapshot(self, entity_id: str) -> dict[str, Any]:
+        """现场构建单个实体的最小快照（正则动态命中实体用；不依赖 config_flow）。"""
+        ent_reg = er.async_get(self.hass)
+        dev_reg = dr.async_get(self.hass)
+        reg_entry = None
+        reg_get = getattr(ent_reg, "async_get", None)
+        if callable(reg_get):
+            reg_entry = reg_get(entity_id)
+        device = None
+        if reg_entry and getattr(reg_entry, "device_id", None):
+            dev_get = getattr(dev_reg, "async_get", None)
+            if callable(dev_get):
+                device = dev_get(reg_entry.device_id)
+        return {
+            "entity_id": entity_id,
+            "device_name": getattr(device, "name", None),
+            "device_model": getattr(device, "model", None),
+            "manufacturer": getattr(device, "manufacturer", None),
+        }
+
+    def _regex_match_entities(self, pattern: str) -> list[str]:
+        """按正则规则运行时匹配当前实体注册表中的实体 ID。
+
+        与手动多选取并集构成分组 live 成员；新增匹配实体在下次刷新自动入组。
+        仅匹配 sensor. 域且未被禁用的实体（与手动 EntitySelector 域一致）。
+        """
+        pattern = (pattern or "").strip()
+        if not pattern:
+            return []
+        try:
+            compiled = re.compile(pattern)
+        except re.error:
+            return []
+        ent_reg = er.async_get(self.hass)
+        entities = getattr(ent_reg, "entities", None) or {}
+        return [
+            entity_id
+            for entity_id, entry in entities.items()
+            if (
+                not getattr(entry, "disabled_by", None)
+                and entity_id.startswith("sensor.")
+                and compiled.search(entity_id)
+            )
+        ]
+
+    def _group_live_entities(self, group: dict[str, Any]) -> list[str]:
+        """分组的 live 成员 = 手动固定快照 ∪ 正则规则运行时匹配（去重保序）。"""
+        if self._group_is_custom(group):
+            return []
+        manual = [
+            s["entity_id"]
+            for s in group.get(CONF_SOURCE_ENTITIES, [])
+            if s.get("entity_id")
+        ]
+        regex = self._regex_match_entities(group.get(CONF_ENTITY_REGEX, ""))
+        return sorted(set(manual) | set(regex))
+
+    def _group_manual_entities(self, group: dict[str, Any]) -> list[str]:
+        """分组内手动固定实体（不含正则动态匹配）。"""
+        return [
+            s["entity_id"]
+            for s in group.get(CONF_SOURCE_ENTITIES, [])
+            if s.get("entity_id")
+        ]
+
+    def _group_entities(self, group: dict[str, Any]) -> list[str]:
+        """分组内实体（live：手动固定 ∪ 正则动态匹配；群组递归展开为叶子）。"""
+        return self._group_live_entities(group)
+
+    def _group_resolved(self, group: dict[str, Any]) -> list[str]:
+        """分组内实体（群组递归展开为叶子）。"""
+        return self._expand_groups(self._group_entities(group))
 
     @property
     def source_entities(self) -> list[str]:
@@ -817,19 +936,21 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             self._resolved_entities = self._expand_groups(self.source_entities)
         return list(self._resolved_entities)
 
-    def bound_values(self) -> list[float | None]:
-        """读取实际实体的实时值（缺失 / 不可用返回 None）。
+    def _read_values(
+        self, entity_ids: list[str], threshold_type: str | None = None
+    ) -> list[float | None]:
+        """读取指定实体的实时值（缺失 / 不可用返回 None）。
 
         时间类阈值类型下，按实体 unit_of_measurement 换算为小时
         （与 evaluate_threshold 内部 threshold→小时换算口径一致，
         避免「阈值换算、value 不换算」的单位不对称误判）；
         非时间类型 / 无可识别单位实体保持原值（向后兼容）。
         """
-        convert = self.threshold_type in (
+        convert = (threshold_type or self.threshold_type) in (
             THRESHOLD_TYPE_REMAINING_TIME, THRESHOLD_TYPE_USED_TIME
         )
         values: list[float | None] = []
-        for entity_id in self.resolved_source_entities():
+        for entity_id in entity_ids:
             state = self.hass.states.get(entity_id)
             if state is None or state.state in ("unknown", "unavailable", None):
                 values.append(None)
@@ -845,6 +966,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                     raw = raw * factor
             values.append(raw)
         return values
+
+    def bound_values(self) -> list[float | None]:
+        """全部分组展开后实体的实时值并集（待办/通知显示用）。"""
+        return self._read_values(self.resolved_source_entities())
 
     def triggered_entities(self) -> list[str]:
         """当前越过阈值的实际实体。对外统一读单一事实源；未刷新 fallback。"""
@@ -904,11 +1029,33 @@ class ConsumableTypeCoordinator(BaseCoordinator):
     def _trigger_kind(self) -> Literal["replace", "low_stock"]:
         return "replace"
 
+    def _group_threshold(
+        self, group: dict[str, Any]
+    ) -> tuple[str, float | None, str, str]:
+        """分组阈值：分组覆盖优先，否则回退条目级（再回退类型/通用在属性里）。
+
+        返回 (type, value, unit, operator)。
+        """
+        override = group.get(CONF_THRESHOLD)
+        if override is not None:
+            return (
+                group.get(CONF_THRESHOLD_TYPE) or self.threshold_type,
+                _to_float(override),
+                group.get(CONF_THRESHOLD_UNIT) or self.threshold_unit,
+                group.get(CONF_THRESHOLD_OPERATOR) or self.threshold_operator,
+            )
+        return (
+            self.threshold_type,
+            self.threshold,
+            self.threshold_unit,
+            self.threshold_operator,
+        )
+
     def _compute_triggered(self) -> TriggeredSet:
         """更换触发集合评估：评估阶段唯一入口。
 
         先重算「群组展开后的叶子实体列表」（唯一展开点，缓存供下游统一
-        读取），再逐个评估阈值。
+        读取），再逐分组按各自阈值评估阈值（分组可覆盖条目级阈值）。
         """
         self._resolved_entities = self._expand_groups(self.source_entities)
         return TriggeredSet(
@@ -917,19 +1064,20 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         )
 
     def _eval_triggered_entities(self) -> list[str]:
-        """触发实体评估（评估阶段唯一调用；下游只读 _current_triggered）。"""
+        """触发实体评估（评估阶段唯一调用；下游只读 _current_triggered）。
+
+        逐分组评估：每个分组用自身阈值（或回退条目级）判断其成员是否越过
+        阈值，最终返回所有分组触发实体的并集（待办/通知仍按实体逐条）。
+        """
         triggered: list[str] = []
-        for entity_id, value in zip(
-            self.resolved_source_entities(), self.bound_values()
-        ):
-            if evaluate_threshold(
-                self.threshold_type,
-                self.threshold,
-                self.threshold_operator,
-                [value],
-                self.threshold_unit,
+        for group in self.groups:
+            g_resolved = self._group_resolved(group)
+            ttype, tval, tunit, top = self._group_threshold(group)
+            for entity_id, value in zip(
+                g_resolved, self._read_values(g_resolved, ttype)
             ):
-                triggered.append(entity_id)
+                if evaluate_threshold(ttype, tval, top, [value], tunit):
+                    triggered.append(entity_id)
         return triggered
 
     @property
@@ -956,6 +1104,107 @@ class ConsumableTypeCoordinator(BaseCoordinator):
     @property
     def last_replaced(self) -> str | None:
         return self._entry.options.get(CONF_LAST_REPLACED)
+
+    # ---- 自定义耗材实体分组（无绑定实体，按 added_at 计时）----
+    def _group_is_custom(self, group: dict[str, Any]) -> bool:
+        """该分组是否为自定义耗材实体（自建数据，不绑定实体）。"""
+        return group.get(CONF_GROUP_KIND) == GROUP_KIND_CUSTOM
+
+    def _custom_added_at(self, group: dict[str, Any]) -> datetime | None:
+        """解析添加/更换时间（ISO 日期或日期时间），无/非法返回 None。"""
+        raw = group.get(CONF_ADDED_AT)
+        if not raw:
+            return None
+        try:
+            added = datetime.fromisoformat(str(raw))
+        except ValueError:
+            return None
+        if isinstance(added, date) and not isinstance(added, datetime):
+            added = datetime(added.year, added.month, added.day)
+        if added.tzinfo is None:
+            added = added.replace(tzinfo=timezone.utc)
+        return added
+
+    def custom_elapsed_hours(self, group: dict[str, Any]) -> float | None:
+        """已使用时长（小时）；未配置 added_at 返回 None。"""
+        added = self._custom_added_at(group)
+        if added is None:
+            return None
+        now = datetime.now(timezone.utc)
+        return (now - added).total_seconds() / 3600.0
+
+    def _custom_triggered(self, group: dict[str, Any]) -> bool:
+        """自定义分组触发判定：已使用时长 > 阈值（used_time + greater_than）。"""
+        elapsed = self.custom_elapsed_hours(group)
+        if elapsed is None:
+            return False
+        _ttype, tval, tunit, top = self._group_threshold(group)
+        # 自定义分组恒按「已使用时长」语义评估（与表单固定阈值类型一致）
+        return evaluate_threshold(
+            THRESHOLD_TYPE_USED_TIME, tval, top, [elapsed], tunit
+        )
+
+    def group_status(self, group: dict[str, Any]) -> str:
+        """分组更换状态：分组内任一实体触发即「需要更换」。
+
+        自定义耗材实体分组无绑定实体，改按「已使用时长」评估；
+        优先读 _current_triggered（单一事实源）；尚未刷新时实时评估该组。
+        """
+        if self._group_is_custom(group):
+            return STATE_REPLACE_NEEDED if self._custom_triggered(group) else STATE_OK
+        g_resolved = set(self._group_resolved(group))
+        if (
+            self._current_triggered is not None
+            and self._current_triggered.kind == "replace"
+        ):
+            triggered = set(self._current_triggered.members)
+        else:
+            triggered = set(self._eval_triggered_entities())
+        return (
+            STATE_REPLACE_NEEDED
+            if g_resolved & triggered
+            else STATE_OK
+        )
+
+    def group_attributes(self, group: dict[str, Any]) -> dict[str, Any]:
+        """分组诊断实体属性：名称/阈值/实体/触发列表。"""
+        if self._group_is_custom(group):
+            ttype, tval, tunit, top = self._group_threshold(group)
+            elapsed = self.custom_elapsed_hours(group)
+            # 已用时长换算到阈值单位（与 evaluate_threshold 口径一致），便于对照
+            factor = TIME_UNIT_TO_HOURS.get(tunit, 1.0)
+            elapsed_in_unit = (elapsed / factor) if elapsed is not None else None
+            return {
+                "group": group.get(CONF_GROUP_NAME),
+                "custom_consumable_entity": True,
+                "consumable_type": self.cons_type,
+                "added_at": group.get(CONF_ADDED_AT),
+                "elapsed": elapsed_in_unit,
+                "threshold_type": THRESHOLD_TYPE_USED_TIME,
+                "threshold": tval,
+                "threshold_unit": tunit,
+                "threshold_operator": top,
+                "last_replaced": self.last_replaced,
+            }
+        g_resolved = set(self._group_resolved(group))
+        ttype, tval, tunit, top = self._group_threshold(group)
+        manual = self._group_manual_entities(group)
+        regex = self._regex_match_entities(group.get(CONF_ENTITY_REGEX, ""))
+        return {
+            "group": group.get(CONF_GROUP_NAME),
+            "consumable_type": self.cons_type,
+            "threshold_type": ttype,
+            "threshold": tval,
+            "threshold_unit": tunit,
+            "threshold_operator": top,
+            "source_entities": self._group_entities(group),
+            "manual_entities": manual,
+            "regex_matched": regex,
+            "triggered_entities": [
+                e for e in self.triggered_entities() if e in g_resolved
+            ],
+            "last_replaced": self.last_replaced,
+        }
 
     def status_attributes(self) -> dict[str, Any]:
         return {
