@@ -15,6 +15,13 @@
       "default_threshold": 20,
       "default_threshold_unit": "%"
     },
+    "humidifier": {
+      "name": "Humidifier consumables",
+      "icon": "mdi:air-humidifier",
+      "default_threshold_type": "used_time",
+      "default_threshold": 2160,
+      "default_threshold_unit": "hours"
+    },
     "ink": {
       "name": "Printer consumables",
       "icon": "mdi:printer-outline",

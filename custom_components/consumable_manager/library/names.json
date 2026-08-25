@@ -8,6 +8,10 @@
       "zh-Hans": "净化设备滤芯",
       "en": "Filter"
     },
+    "humidifier": {
+      "zh-Hans": "加湿器耗材",
+      "en": "Humidifier consumables"
+    },
     "ink": {
       "zh-Hans": "打印机耗材",
       "en": "Printer consumables"
@@ -26,6 +30,10 @@
       "zh-Hans": "9V 方块电池",
       "en": "9V battery"
     },
+    "battery_a23": {
+      "zh-Hans": "A23 12V 电池",
+      "en": "A23 12V battery"
+    },
     "battery_aa": {
       "zh-Hans": "5号电池 AA",
       "en": "AA battery"
@@ -34,21 +42,229 @@
       "zh-Hans": "7号电池 AAA",
       "en": "AAA battery"
     },
+    "battery_aaaa": {
+      "zh-Hans": "9号电池 AAAA",
+      "en": "AAAA battery"
+    },
+    "battery_c": {
+      "zh-Hans": "2号电池 C",
+      "en": "C size battery"
+    },
+    "battery_cr123a": {
+      "zh-Hans": "CR123A 电池",
+      "en": "CR123A battery"
+    },
+    "battery_cr1620": {
+      "zh-Hans": "纽扣电池 CR1620",
+      "en": "Button cell CR1620"
+    },
+    "battery_cr1632": {
+      "zh-Hans": "纽扣电池 CR1632",
+      "en": "Button cell CR1632"
+    },
+    "battery_cr2016": {
+      "zh-Hans": "纽扣电池 CR2016",
+      "en": "Button cell CR2016"
+    },
+    "battery_cr2025": {
+      "zh-Hans": "纽扣电池 CR2025",
+      "en": "Button cell CR2025"
+    },
     "battery_cr2032": {
       "zh-Hans": "纽扣电池 CR2032",
       "en": "Button cell CR2032"
+    },
+    "battery_cr2430": {
+      "zh-Hans": "纽扣电池 CR2430",
+      "en": "Button cell CR2430"
     },
     "battery_cr2450": {
       "zh-Hans": "纽扣电池 CR2450",
       "en": "Button cell CR2450"
     },
+    "battery_cr2477": {
+      "zh-Hans": "纽扣电池 CR2477",
+      "en": "Button cell CR2477"
+    },
+    "battery_d": {
+      "zh-Hans": "1号电池 D",
+      "en": "D size battery"
+    },
+    "battery_lr1130": {
+      "zh-Hans": "纽扣电池 LR1130 (AG10)",
+      "en": "Button cell LR1130 (AG10)"
+    },
+    "battery_lr41": {
+      "zh-Hans": "纽扣电池 LR41 (AG3)",
+      "en": "Button cell LR41 (AG3)"
+    },
+    "battery_lr44": {
+      "zh-Hans": "纽扣电池 LR44 (AG13)",
+      "en": "Button cell LR44 (AG13)"
+    },
+    "battery_sr44sw": {
+      "zh-Hans": "纽扣电池 SR44SW (357)",
+      "en": "Button cell SR44SW (357)"
+    },
+    "battery_sr621sw": {
+      "zh-Hans": "纽扣电池 SR621SW (379)",
+      "en": "Button cell SR621SW (379)"
+    },
+    "battery_sr626sw": {
+      "zh-Hans": "纽扣电池 SR626SW (377)",
+      "en": "Button cell SR626SW (377)"
+    },
+    "filter_3m_kj306f_hepa": {
+      "zh-Hans": "3M KJ306F 空气净化器复合滤芯",
+      "en": "3M KJ306F air purifier HEPA+carbon filter"
+    },
+    "filter_3m_kje400_hepa": {
+      "zh-Hans": "3M KJE400 全滤净滤网",
+      "en": "3M KJE400 full-protection HEPA filter"
+    },
+    "filter_activated_carbon_bulk": {
+      "zh-Hans": "散装活性炭粒（除味补充装）",
+      "en": "Bulk activated carbon pellets refill"
+    },
+    "filter_blueair_200_smokestop": {
+      "zh-Hans": "Blueair 200 系列 Smokestop 复合滤网",
+      "en": "Blueair 200 series Smokestop filter"
+    },
+    "filter_blueair_400_particle": {
+      "zh-Hans": "Blueair 400 系列粒子型 HEPA 滤网",
+      "en": "Blueair 400 series particle HEPA filter"
+    },
+    "filter_car_hepa_general": {
+      "zh-Hans": "车载通用 HEPA 空调滤芯",
+      "en": "General automotive HEPA cabin filter"
+    },
+    "filter_dyson_965432_01_hepa": {
+      "zh-Hans": "戴森 360° 一体滤芯 965432-01（TP07/HP09/PH04 等）",
+      "en": "Dyson 360° Glass HEPA+Carbon filter 965432-01"
+    },
+    "filter_dyson_tp03_hepa": {
+      "zh-Hans": "戴森 TP03/AM11/BP01 旧款滤芯",
+      "en": "Dyson TP03/AM11/BP01 HEPA filter (legacy)"
+    },
     "filter_generic_pm25": {
       "zh-Hans": "通用 PM2.5 滤芯",
       "en": "Generic PM2.5 filter"
     },
+    "filter_hepa11": {
+      "zh-Hans": "HEPA 11 级高效滤芯",
+      "en": "HEPA 11 high-efficiency filter"
+    },
     "filter_hepa13": {
       "zh-Hans": "HEPA 13 滤芯",
       "en": "HEPA 13 filter"
+    },
+    "filter_honeywell_hrf_r3": {
+      "zh-Hans": "霍尼韦尔 HRF-R3 True HEPA 套装（HPA100/200/300）",
+      "en": "Honeywell HRF-R3 True HEPA filter combo"
+    },
+    "filter_philips_fy3432_hepa": {
+      "zh-Hans": "飞利浦 FY3432/10 NanoProtect HEPA 滤芯（Series 3000i）",
+      "en": "Philips FY3432/10 NanoProtect HEPA filter (3000i)"
+    },
+    "filter_sharp_fz_gf38xh_hepa": {
+      "zh-Hans": "夏普 KC 系列 HEPA 集尘滤网 FZ-GF38XH",
+      "en": "Sharp KC series HEPA filter FZ-GF38XH"
+    },
+    "filter_sharp_fz_hf60me_humid": {
+      "zh-Hans": "夏普 KC 系列加湿滤网 FZ-HF60ME",
+      "en": "Sharp KC series humidifying filter FZ-HF60ME"
+    },
+    "filter_xiaomi_airpurifier_2": {
+      "zh-Hans": "米家空气净化器 1/2 滤芯",
+      "en": "Mi Air Purifier 1/2 filter"
+    },
+    "filter_xiaomi_airpurifier_3": {
+      "zh-Hans": "米家空气净化器 3/3H 滤芯",
+      "en": "Mi Air Purifier 3/3H filter"
+    },
+    "filter_xiaomi_airpurifier_3c": {
+      "zh-Hans": "米家空气净化器 3C 滤芯",
+      "en": "Mi Air Purifier 3C filter"
+    },
+    "filter_xiaomi_airpurifier_4": {
+      "zh-Hans": "米家空气净化器 4/4 Lite 滤芯",
+      "en": "Mi Air Purifier 4/4 Lite filter"
+    },
+    "filter_xiaomi_airpurifier_4pro": {
+      "zh-Hans": "米家空气净化器 4 Pro 滤芯",
+      "en": "Mi Air Purifier 4 Pro filter"
+    },
+    "filter_xiaomi_airpurifier_max": {
+      "zh-Hans": "米家空气净化器 Max 滤芯",
+      "en": "Mi Air Purifier Max filter"
+    },
+    "filter_xiaomi_airpurifier_proh": {
+      "zh-Hans": "米家空气净化器 Pro H 滤芯",
+      "en": "Mi Air Purifier Pro H filter"
+    },
+    "humidifier_bacteriostatic_silver_ion_module": {
+      "zh-Hans": "加湿器银离子抑菌模块",
+      "en": "Humidifier silver-ion bacteriostatic module"
+    },
+    "humidifier_cold_evap_general_filter": {
+      "zh-Hans": "通用冷蒸发加湿器滤网",
+      "en": "General cold-evaporative humidifier filter"
+    },
+    "humidifier_descaler": {
+      "zh-Hans": "加湿器除垢片",
+      "en": "Humidifier descale tablets"
+    },
+    "humidifier_panasonic_fz_vx": {
+      "zh-Hans": "松下 FZ-VX 加湿+HEPA 滤网套装",
+      "en": "Panasonic FZ-VX humidifier + HEPA filter set"
+    },
+    "humidifier_philips_hu4101": {
+      "zh-Hans": "飞利浦 HU4101 纳米云加湿滤网",
+      "en": "Philips HU4101 NanoCloud humidification wick"
+    },
+    "humidifier_philips_hu4136": {
+      "zh-Hans": "飞利浦 HU4136 抑菌加湿滤网（HU2716/3916）",
+      "en": "Philips HU4136 antibacterial humidifier filter"
+    },
+    "humidifier_smartmi_evap_pad": {
+      "zh-Hans": "智米蒸发式加湿器滤网",
+      "en": "Smartmi evaporative humidifier pad"
+    },
+    "humidifier_yadu_evap_filter": {
+      "zh-Hans": "亚都蒸发式加湿器滤网",
+      "en": "Yadu evaporative humidifier filter"
+    },
+    "ink_brother_bt5009_cmy": {
+      "zh-Hans": "兄弟 BT5009CMY 彩色墨水套装（DCP-T220/420/520 等）",
+      "en": "Brother BT-5009 CMY color ink bottle set"
+    },
+    "ink_brother_bt6009_black": {
+      "zh-Hans": "兄弟 BT6009BK 黑色墨水（DCP-T220/310/420 等）",
+      "en": "Brother BT-6009BK black ink bottle"
+    },
+    "ink_canon_cl816_color": {
+      "zh-Hans": "佳能 CL-816 彩色墨盒（MP288/iP2780/MP236）",
+      "en": "Canon CL-816 tri-color ink cartridge"
+    },
+    "ink_canon_cl846_color": {
+      "zh-Hans": "佳能 CL-846 彩色墨盒（MG2580s/MG3080/TS308）",
+      "en": "Canon CL-846 tri-color ink cartridge"
+    },
+    "ink_canon_pg815_black": {
+      "zh-Hans": "佳能 PG-815 黑色墨盒（MP288/iP2780/MP236）",
+      "en": "Canon PG-815 black ink cartridge"
+    },
+    "ink_canon_pg845_black": {
+      "zh-Hans": "佳能 PG-845 黑色墨盒（MG2580s/MG3080/TS308）",
+      "en": "Canon PG-845 black ink cartridge"
+    },
+    "ink_epson_t664_black": {
+      "zh-Hans": "爱普生 T664 黑色墨仓墨水（L310/L313/L360/L380）",
+      "en": "Epson T664 EcoTank black ink bottle"
+    },
+    "ink_epson_t664_cmy": {
+      "zh-Hans": "爱普生 T664 青/洋红/黄 墨水套装（L310/L313/L380）",
+      "en": "Epson T664 EcoTank CMY ink bottle set"
     },
     "ink_hp680_black": {
       "zh-Hans": "HP 680 黑色墨盒",
@@ -58,21 +274,201 @@
       "zh-Hans": "HP 680 彩色墨盒",
       "en": "HP 680 tri-color ink cartridge"
     },
+    "ink_hp_gt51_black": {
+      "zh-Hans": "惠普 GT51 黑色墨仓墨水（Smart Tank 518/519/531）",
+      "en": "HP GT51 black ink bottle (Smart Tank)"
+    },
+    "ink_hp_gt52_cmy": {
+      "zh-Hans": "惠普 GT52 青/洋红/黄 墨水套装（Smart Tank 系列）",
+      "en": "HP GT52 CMY ink bottle set (Smart Tank)"
+    },
+    "robot_vacuum_dreame_cleaning_solution": {
+      "zh-Hans": "追觅扫地机清洁液",
+      "en": "Dreame robot vacuum cleaning solution"
+    },
+    "robot_vacuum_dreame_dust_bag_4l": {
+      "zh-Hans": "追觅扫地机 4L 集尘袋",
+      "en": "Dreame robot vacuum 4L dust bag"
+    },
+    "robot_vacuum_dreame_filter_silver_ion": {
+      "zh-Hans": "追觅扫地机银离子滤网",
+      "en": "Dreame robot vacuum silver-ion filter"
+    },
+    "robot_vacuum_dreame_main_brush_s10": {
+      "zh-Hans": "追觅扫地机主刷 S10 系列",
+      "en": "Dreame robot vacuum main brush S10 series"
+    },
+    "robot_vacuum_dreame_mop_pad_trail": {
+      "zh-Hans": "追觅扫地机履带拖布",
+      "en": "Dreame robot vacuum trail mop pad"
+    },
+    "robot_vacuum_dreame_side_brush_s10": {
+      "zh-Hans": "追觅扫地机边刷 S10 系列",
+      "en": "Dreame robot vacuum side brush S10 series"
+    },
+    "robot_vacuum_dust_bag": {
+      "zh-Hans": "扫地机集尘袋",
+      "en": "Robot vacuum dust bag"
+    },
+    "robot_vacuum_ecovacs_cleaning_solution": {
+      "zh-Hans": "科沃斯扫地机清洁液",
+      "en": "Ecovacs robot vacuum cleaning solution"
+    },
+    "robot_vacuum_ecovacs_dust_bag_x1": {
+      "zh-Hans": "科沃斯扫地机集尘袋 X1 系列",
+      "en": "Ecovacs robot vacuum dust bag X1 series"
+    },
+    "robot_vacuum_ecovacs_filter_antibact": {
+      "zh-Hans": "科沃斯扫地机抗菌滤网",
+      "en": "Ecovacs robot vacuum antibacterial filter"
+    },
+    "robot_vacuum_ecovacs_main_brush_x1": {
+      "zh-Hans": "科沃斯扫地机主刷 X1 系列",
+      "en": "Ecovacs robot vacuum main brush X1 series"
+    },
+    "robot_vacuum_ecovacs_mop_cloth_x1": {
+      "zh-Hans": "科沃斯扫地机拖布 X1 系列",
+      "en": "Ecovacs robot vacuum mop cloth X1 series"
+    },
+    "robot_vacuum_ecovacs_mop_pad_omni": {
+      "zh-Hans": "科沃斯扫地机双芯拖布 OMni",
+      "en": "Ecovacs robot vacuum OMni dual-core mop pad"
+    },
+    "robot_vacuum_ecovacs_side_brush_x1": {
+      "zh-Hans": "科沃斯扫地机边刷 X1 系列",
+      "en": "Ecovacs robot vacuum side brush X1 series"
+    },
+    "robot_vacuum_filter": {
+      "zh-Hans": "扫地机滤网",
+      "en": "Robot vacuum HEPA filter"
+    },
+    "robot_vacuum_main_brush": {
+      "zh-Hans": "扫地机主刷",
+      "en": "Robot vacuum main brush"
+    },
     "robot_vacuum_mop": {
       "zh-Hans": "扫地机拖布",
       "en": "Robot vacuum mop cloth"
+    },
+    "robot_vacuum_narwal_cleaning_solution": {
+      "zh-Hans": "云鲸扫地机清洁液",
+      "en": "Narwal robot vacuum cleaning solution"
+    },
+    "robot_vacuum_narwal_dust_bag_j3": {
+      "zh-Hans": "云鲸扫地机集尘袋 J3/J4 系列",
+      "en": "Narwal robot vacuum dust bag J3 series"
+    },
+    "robot_vacuum_narwal_filter_j3": {
+      "zh-Hans": "云鲸扫地机活性炭滤网 J3/J4",
+      "en": "Narwal robot vacuum filter + activated carbon J3"
+    },
+    "robot_vacuum_narwal_main_brush_j3": {
+      "zh-Hans": "云鲸扫地机锥形主刷 J3/J4",
+      "en": "Narwal robot vacuum conical main brush J3"
+    },
+    "robot_vacuum_narwal_mop_track_j4": {
+      "zh-Hans": "云鲸扫地机履带拖布 J4/Freo",
+      "en": "Narwal robot vacuum tracked mop pad J4"
+    },
+    "robot_vacuum_narwal_side_brush_j2": {
+      "zh-Hans": "云鲸扫地机边刷 J2/J3/J4",
+      "en": "Narwal robot vacuum side brush J2/J3/J4"
+    },
+    "robot_vacuum_roborock_cleaning_solution": {
+      "zh-Hans": "石头扫地机清洁液",
+      "en": "Roborock robot vacuum cleaning solution"
+    },
+    "robot_vacuum_roborock_dust_bag_g10": {
+      "zh-Hans": "石头扫地机集尘袋 G10/S8 2.5L",
+      "en": "Roborock robot vacuum dust bag G10/S8 2.5L"
+    },
+    "robot_vacuum_roborock_filter_g10": {
+      "zh-Hans": "石头扫地机可水洗滤网 G10",
+      "en": "Roborock robot vacuum washable filter G10"
+    },
+    "robot_vacuum_roborock_main_brush_g10": {
+      "zh-Hans": "石头扫地机防缠绕主刷 G10",
+      "en": "Roborock robot vacuum anti-wrap main brush G10"
+    },
+    "robot_vacuum_roborock_mop_cloth_g10": {
+      "zh-Hans": "石头扫地机声波拖布 G10/P10",
+      "en": "Roborock robot vacuum sonic mop cloth G10"
+    },
+    "robot_vacuum_roborock_side_brush_g10": {
+      "zh-Hans": "石头扫地机 6 爪边刷 G10",
+      "en": "Roborock robot vacuum 6-claw side brush G10"
     },
     "robot_vacuum_side_brush": {
       "zh-Hans": "扫地机边刷",
       "en": "Robot vacuum side brush"
     },
+    "robot_vacuum_xiaomi_dust_bag_1s": {
+      "zh-Hans": "米家/石头扫地机集尘袋 S7/M40",
+      "en": "Xiaomi Mi robot vacuum dust bag S7 series"
+    },
+    "robot_vacuum_xiaomi_filter_hepa_1s": {
+      "zh-Hans": "米家扫地机 HEPA 滤网 S5/S6",
+      "en": "Xiaomi Mi robot vacuum HEPA filter S5/S6"
+    },
+    "robot_vacuum_xiaomi_main_brush_1s": {
+      "zh-Hans": "米家扫地机主刷 S5/S6/1S",
+      "en": "Xiaomi Mi robot vacuum main brush S5/S6"
+    },
+    "robot_vacuum_xiaomi_mop_cloth_1s": {
+      "zh-Hans": "米家扫地机拖布 S5/S6",
+      "en": "Xiaomi Mi robot vacuum mop cloth S5/S6"
+    },
+    "robot_vacuum_xiaomi_side_brush_1s": {
+      "zh-Hans": "米家扫地机 5 爪边刷 S5/S6",
+      "en": "Xiaomi Mi robot vacuum 5-claw side brush"
+    },
+    "water_purifier_compound_pp_cto": {
+      "zh-Hans": "净水器 PP棉+CTO 复合滤芯",
+      "en": "Water purifier compound PP+CTO filter"
+    },
+    "water_purifier_cto_compressed_carbon": {
+      "zh-Hans": "净水器 CTO 压缩活性炭棒滤芯",
+      "en": "Water purifier CTO compressed carbon block filter"
+    },
+    "water_purifier_disinfectant_cleaner": {
+      "zh-Hans": "净水器管道消毒清洁剂（食品级）",
+      "en": "Water purifier pipeline disinfectant cleaner (food-grade)"
+    },
+    "water_purifier_post_carbon": {
+      "zh-Hans": "净水器后置活性炭滤芯",
+      "en": "Xiaomi water purifier post-carbon filter"
+    },
     "water_purifier_pp": {
       "zh-Hans": "净水器 PP 棉滤芯",
       "en": "PP sediment filter cartridge"
     },
+    "water_purifier_pre_carbon": {
+      "zh-Hans": "净水器前置活性炭滤芯",
+      "en": "Xiaomi water purifier pre-carbon filter"
+    },
     "water_purifier_ro": {
       "zh-Hans": "净水器 RO 反渗透膜",
       "en": "RO reverse osmosis membrane"
+    },
+    "water_purifier_ro_400g_general": {
+      "zh-Hans": "通用 RO 反渗透膜 400G（1812-400）",
+      "en": "General 400GPD RO membrane (1812-400)"
+    },
+    "water_purifier_ro_600g_general": {
+      "zh-Hans": "通用 RO 反渗透膜 600G 大流量（3012-600）",
+      "en": "General 600GPD high-flow RO membrane (3012-600)"
+    },
+    "water_purifier_ro_75g_general": {
+      "zh-Hans": "通用 RO 反渗透膜 75G（1812-75）",
+      "en": "General 75GPD RO membrane (1812-75)"
+    },
+    "water_purifier_t33_post_carbon": {
+      "zh-Hans": "T33 后置口感精制活性炭滤芯",
+      "en": "T33 in-line post-carbon polishing filter"
+    },
+    "water_purifier_uf_membrane": {
+      "zh-Hans": "UF 中空纤维超滤膜滤芯（保留矿物质）",
+      "en": "UF hollow-fiber ultrafiltration membrane"
     }
   },
   "devices": {
@@ -108,17 +504,57 @@
       "zh-Hans": "SONOFF 人体传感器",
       "en": "SONOFF motion sensor"
     },
-    "xiaomi_zhimi_airpurifier_m1": {
-      "zh-Hans": "米家空气净化器 1",
-      "en": "Mi Air Purifier 1"
+    "xiaomi_zhimi_airp_mb5": {
+      "zh-Hans": "米家空气净化器 4",
+      "en": "Mi Air Purifier 4"
     },
-    "xiaomi_zhimi_airpurifier_m2": {
-      "zh-Hans": "米家空气净化器 2",
-      "en": "Mi Air Purifier 2"
+    "xiaomi_zhimi_airp_mp4": {
+      "zh-Hans": "米家空气净化器 4",
+      "en": "Mi Air Purifier 4"
+    },
+    "xiaomi_zhimi_airp_rma2": {
+      "zh-Hans": "米家空气净化器 4 Lite",
+      "en": "Mi Air Purifier 4 Lite"
+    },
+    "xiaomi_zhimi_airp_rma3": {
+      "zh-Hans": "米家空气净化器 4 Lite",
+      "en": "Mi Air Purifier 4 Lite"
+    },
+    "xiaomi_zhimi_airp_sa4": {
+      "zh-Hans": "米家空气净化器 4 Max",
+      "en": "Mi Air Purifier 4 Max"
+    },
+    "xiaomi_zhimi_airp_va2a": {
+      "zh-Hans": "米家空气净化器 4 Pro",
+      "en": "Mi Air Purifier 4 Pro"
+    },
+    "xiaomi_zhimi_airp_vb4": {
+      "zh-Hans": "米家空气净化器 4 Pro",
+      "en": "Mi Air Purifier 4 Pro"
+    },
+    "xiaomi_zhimi_airpurifier_m1": {
+      "zh-Hans": "米家空气净化器 1/2",
+      "en": "Mi Air Purifier 1/2"
     },
     "xiaomi_zhimi_airpurifier_m3": {
-      "zh-Hans": "米家空气净化器 3",
-      "en": "Mi Air Purifier 3"
+      "zh-Hans": "米家空气净化器 3/3H",
+      "en": "Mi Air Purifier 3/3H"
+    },
+    "xiaomi_zhimi_airpurifier_mb4": {
+      "zh-Hans": "米家空气净化器 3C",
+      "en": "Mi Air Purifier 3C"
+    },
+    "xiaomi_zhimi_airpurifier_vb2": {
+      "zh-Hans": "米家空气净化器 Pro H",
+      "en": "Mi Air Purifier Pro H"
+    },
+    "xiaomi_zhimi_humidifier_ca4": {
+      "zh-Hans": "智米蒸发式加湿器",
+      "en": "Smartmi Evaporative Humidifier"
+    },
+    "xiaomi_zhimi_humidifier_cb1": {
+      "zh-Hans": "智米蒸发式加湿器",
+      "en": "Smartmi Evaporative Humidifier"
     }
   }
 }
