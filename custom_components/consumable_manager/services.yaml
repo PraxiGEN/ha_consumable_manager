@@ -92,6 +92,7 @@ add_consumable:
           options:
             - battery
             - filter
+            - humidifier
             - ink
             - robot_vacuum
             - water_purifier

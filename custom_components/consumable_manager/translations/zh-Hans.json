@@ -36,13 +36,14 @@
     "entry_type": {
       "options": {
         "battery": "无线设备（电池）",
-        "custom": "自定义类型",
         "filter": "净化设备滤芯",
+        "humidifier": "加湿器耗材",
         "ink": "打印机耗材",
-        "notification": "通知渠道设置",
         "robot_vacuum": "扫地机耗材",
-        "stock": "耗材库存管理",
-        "water_purifier": "净水器耗材"
+        "water_purifier": "净水器耗材",
+        "custom": "自定义类型",
+        "notification": "通知渠道设置",
+        "stock": "耗材库存管理"
       }
     },
     "threshold_operator": {

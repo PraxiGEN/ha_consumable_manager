@@ -36,13 +36,14 @@
     "entry_type": {
       "options": {
         "battery": "Wireless device (battery)",
-        "custom": "Custom type",
         "filter": "Purifier filter",
+        "humidifier": "Humidifier consumables",
         "ink": "Printer consumables",
-        "notification": "Notification channels",
         "robot_vacuum": "Robot vacuum consumables",
-        "stock": "Consumable stock management",
-        "water_purifier": "Water purifier consumables"
+        "water_purifier": "Water purifier consumables",
+        "custom": "Custom type",
+        "notification": "Notification channels",
+        "stock": "Consumable stock management"
       }
     },
     "threshold_operator": {
@@ -364,7 +365,7 @@
       }
     },
     "query_binding": {
-      "name":  "Query bindings",
+      "name": "Query bindings",
       "description": "Query binding relations (filter by entity, consumable or stock item). When an entity_id is given, also returns the entity's device info (entity_info) and suggested consumables from the library (suggested) for binding.",
       "fields": {
         "entity_id": {
