@@ -5,9 +5,9 @@
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/PraxiGEN/ha-consumable-manager",
-  "integration_type": "hub",
+  "integration_type": "service",
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/PraxiGEN/ha-consumable-manager/issues",
   "requirements": [],
-  "version": "0.1.8"
+  "version": "0.1.9"
 }
