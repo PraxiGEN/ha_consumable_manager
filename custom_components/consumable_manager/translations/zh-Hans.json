@@ -272,16 +272,6 @@
           "replace_needed": "需要更换"
         },
         "state_attributes": {
-          "consumable_type": {
-            "name": "耗材类型",
-            "state": {
-              "battery": "无线设备（电池）",
-              "filter": "净化设备滤芯",
-              "ink": "打印机耗材",
-              "robot_vacuum": "扫地机耗材",
-              "water_purifier": "净水器耗材"
-            }
-          },
           "group": {
             "name": "分组"
           },
@@ -292,60 +282,6 @@
               "false": "否"
             }
           },
-          "last_replaced": {
-            "name": "上次更换"
-          },
-          "added_at": {
-            "name": "添加时间"
-          },
-          "elapsed": {
-            "name": "已用时长"
-          },
-          "source_entities": {
-            "name": "绑定实体"
-          },
-          "manual_entities": {
-            "name": "手动绑定实体"
-          },
-          "regex_matched": {
-            "name": "正则匹配实体"
-          },
-          "threshold": {
-            "name": "阈值"
-          },
-          "threshold_operator": {
-            "name": "计算方式",
-            "state": {
-              "equal": "等于",
-              "greater_than": "大于",
-              "less_than": "小于"
-            }
-          },
-          "threshold_type": {
-            "name": "阈值类型",
-            "state": {
-              "lifetime_percent": "剩余寿命（%）",
-              "numeric": "数值",
-              "remaining_time": "剩余时间",
-              "used_time": "已使用时长"
-            }
-          },
-          "threshold_unit": {
-            "name": "单位",
-            "state": {
-              "days": "天",
-              "numeric": "数值",
-              "hours": "小时",
-              "minutes": "分钟"
-            }
-          },
-          "triggered_entities": {
-            "name": "触发实体"
-          }
-        }
-      },
-      "stock_item": {
-        "state_attributes": {
           "consumable_type": {
             "name": "耗材类型",
             "state": {
@@ -356,8 +292,81 @@
               "water_purifier": "净水器耗材"
             }
           },
+          "binding_consumable": {
+            "name": "绑定耗材实体"
+          },
+          "added_at": {
+            "name": "添加时间"
+          },
+          "elapsed": {
+            "name": "已使用时长"
+          },
+          "threshold_type": {
+            "name": "阈值类型",
+            "state": {
+              "lifetime_percent": "剩余寿命（%）",
+              "numeric": "数值",
+              "remaining_time": "剩余时间",
+              "used_time": "已使用时长"
+            }
+          },
+          "threshold": {
+            "name": "阈值"
+          },
+          "threshold_unit": {
+            "name": "单位",
+            "state": {
+              "days": "天",
+              "numeric": "数值",
+              "hours": "小时",
+              "minutes": "分钟"
+            }
+          },
+          "threshold_operator": {
+            "name": "计算方式",
+            "state": {
+              "equal": "等于",
+              "greater_than": "大于",
+              "less_than": "小于"
+            }
+          },
+          "source_entities": {
+            "name": "绑定实体"
+          },
+          "manual_entities": {
+            "name": "手动绑定实体"
+          },
+          "regex_matched": {
+            "name": "正则匹配实体"
+          },
+          "triggered_entities": {
+            "name": "触发实体"
+          },
+          "last_replaced": {
+            "name": "上次更换"
+          }
+        }
+      },
+      "stock_item": {
+        "state_attributes": {
           "item_id": {
             "name": "条目标识"
+          },
+          "consumable_type": {
+            "name": "耗材类型",
+            "state": {
+              "battery": "无线设备（电池）",
+              "filter": "净化设备滤芯",
+              "ink": "打印机耗材",
+              "robot_vacuum": "扫地机耗材",
+              "water_purifier": "净水器耗材"
+            }
+          },
+          "unit": {
+            "name": "单位"
+          },
+          "stock_threshold": {
+            "name": "库存阈值"
           },
           "low_stock": {
             "name": "是否缺货",
@@ -365,12 +374,6 @@
               "false": "否",
               "true": "是"
             }
-          },
-          "stock_threshold": {
-            "name": "库存阈值"
-          },
-          "unit": {
-            "name": "单位"
           }
         }
       },

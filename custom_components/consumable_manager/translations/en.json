@@ -272,16 +272,6 @@
           "replace_needed": "Replace needed"
         },
         "state_attributes": {
-          "consumable_type": {
-            "name": "Consumable type",
-            "state": {
-              "battery": "Wireless device (battery)",
-              "filter": "Purification device filter",
-              "ink": "Printer consumable",
-              "robot_vacuum": "Robot vacuum consumable",
-              "water_purifier": "Water purifier consumable"
-            }
-          },
           "group": {
             "name": "Group"
           },
@@ -292,60 +282,6 @@
               "false": "No"
             }
           },
-          "last_replaced": {
-            "name": "Last replaced"
-          },
-          "added_at": {
-            "name": "Added date"
-          },
-          "elapsed": {
-            "name": "Elapsed used time"
-          },
-          "source_entities": {
-            "name": "Bound entities"
-          },
-          "manual_entities": {
-            "name": "Manually bound entities"
-          },
-          "regex_matched": {
-            "name": "Regex matched entities"
-          },
-          "threshold": {
-            "name": "Threshold"
-          },
-          "threshold_operator": {
-            "name": "Comparison",
-            "state": {
-              "equal": "Equal",
-              "greater_than": "Greater than",
-              "less_than": "Less than"
-            }
-          },
-          "threshold_type": {
-            "name": "Threshold type",
-            "state": {
-              "lifetime_percent": "Remaining lifetime (%)",
-              "numeric": "Numeric",
-              "remaining_time": "Remaining time",
-              "used_time": "Used time"
-            }
-          },
-          "threshold_unit": {
-            "name": "Unit",
-            "state": {
-              "days": "Days",
-              "numeric": "Numeric",
-              "hours": "Hours",
-              "minutes": "Minutes"
-            }
-          },
-          "triggered_entities": {
-            "name": "Triggered entities"
-          }
-        }
-      },
-      "stock_item": {
-        "state_attributes": {
           "consumable_type": {
             "name": "Consumable type",
             "state": {
@@ -356,8 +292,81 @@
               "water_purifier": "Water purifier consumable"
             }
           },
+          "binding_consumable": {
+            "name": "Binding consumable entity"
+          },
+          "added_at": {
+            "name": "Added date"
+          },
+          "elapsed": {
+            "name": "Elapsed used time"
+          },
+          "threshold_type": {
+            "name": "Threshold type",
+            "state": {
+              "lifetime_percent": "Remaining lifetime (%)",
+              "numeric": "Numeric",
+              "remaining_time": "Remaining time",
+              "used_time": "Used time"
+            }
+          },
+          "threshold": {
+            "name": "Threshold"
+          },
+          "threshold_unit": {
+            "name": "Unit",
+            "state": {
+              "days": "Days",
+              "numeric": "Numeric",
+              "hours": "Hours",
+              "minutes": "Minutes"
+            }
+          },
+          "threshold_operator": {
+            "name": "Comparison",
+            "state": {
+              "equal": "Equal",
+              "greater_than": "Greater than",
+              "less_than": "Less than"
+            }
+          },
+          "source_entities": {
+            "name": "Bound entities"
+          },
+          "manual_entities": {
+            "name": "Manually bound entities"
+          },
+          "regex_matched": {
+            "name": "Regex matched entities"
+          },
+          "triggered_entities": {
+            "name": "Triggered entities"
+          },
+          "last_replaced": {
+            "name": "Last replaced"
+          }
+        }
+      },
+      "stock_item": {
+        "state_attributes": {
           "item_id": {
             "name": "Item ID"
+          },
+          "consumable_type": {
+            "name": "Consumable type",
+            "state": {
+              "battery": "Wireless device (battery)",
+              "filter": "Purification device filter",
+              "ink": "Printer consumable",
+              "robot_vacuum": "Robot vacuum consumable",
+              "water_purifier": "Water purifier consumable"
+            }
+          },
+          "unit": {
+            "name": "Unit"
+          },
+          "stock_threshold": {
+            "name": "Stock threshold"
           },
           "low_stock": {
             "name": "Low stock",
@@ -365,12 +374,6 @@
               "false": "No",
               "true": "Yes"
             }
-          },
-          "stock_threshold": {
-            "name": "Stock threshold"
-          },
-          "unit": {
-            "name": "Unit"
           }
         }
       },
