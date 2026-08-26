@@ -1,7 +1,7 @@
 """耗材类型条目的协调器（ConsumableTypeCoordinator）。"""
 from __future__ import annotations
 
-from datetime import (date, datetime, timezone)
+from datetime import date, datetime, timezone
 import json
 import re
 from typing import Any, Callable, Literal
@@ -14,7 +14,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_track_state_change_event
 from homeassistant.util.dt import as_local
 
-from .const import (
+from ..const import (
     CONF_LAST_REPLACED, CONF_ADDED_AT, CONF_BINDING_GROUPS, CONF_GROUP_ID,
     CONF_GROUP_KIND, CONF_GROUP_NAME, GROUP_KIND_CUSTOM, CONF_SOURCE_ENTITIES,
     CONF_ENTITY_REGEX, CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR, CONF_THRESHOLD_TYPE,
@@ -23,14 +23,14 @@ from .const import (
     NOTIFY_TEXT_DESC_ENTITY, NOTIFY_TEXT_DESC_SPECS, NOTIFY_TEXT_LAST_REPLACED, NOTIFY_TEXT_REPLACE_NEEDED,
     NOTIFY_TEXT_UNKNOWN, OPERATOR_LESS_THAN, THRESHOLD_DEFAULT_OPERATOR, THRESHOLD_TYPE_REMAINING_TIME,
     THRESHOLD_TYPE_USED_TIME, TIME_UNIT_TO_HOURS, TODO_KIND_REPLACE, CONF_CONSUMABLE_ID,
-    STATE_OK, STATE_REPLACE_NEEDED, TODO_STATUS_NEEDS_ACTION, TODO_STATUS_COMPLETED, _TIME_UOM_TO_HOURS,
+    STATE_OK, STATE_REPLACE_NEEDED, TODO_STATUS_NEEDS_ACTION, TODO_STATUS_COMPLETED, TIME_UOM_TO_HOURS,
 )
 
-from .library import Library, TypeMeta
-from .coordinator import (
-    BaseCoordinator, TriggeredSet, _find_stock_coordinator, _to_float,
-    evaluate_threshold,
+from ..library import Library, TypeMeta
+from .base import (
+    BaseCoordinator, TriggeredSet, _to_float, evaluate_threshold,
 )
+from .stock import _find_stock_coordinator
 
 class ConsumableTypeCoordinator(BaseCoordinator):
     """耗材类型条目协调器：绑定实体 + 阈值提醒。"""
@@ -248,7 +248,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 continue
             if convert:
                 uom = state.attributes.get("unit_of_measurement")
-                factor = _TIME_UOM_TO_HOURS.get(str(uom)) if uom else None
+                factor = TIME_UOM_TO_HOURS.get(str(uom)) if uom else None
                 if factor is not None:
                     raw = raw * factor
             values.append(raw)
