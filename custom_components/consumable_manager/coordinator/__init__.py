@@ -14,6 +14,7 @@ from ..const import (
     STATE_LOW_STOCK,
     STATE_OK,
     STATE_REPLACE_NEEDED,
+    TODO_STATUS_COMPLETED,
     TODO_STATUS_NEEDS_ACTION,
 )
 from .factory import build_coordinator
@@ -39,4 +40,5 @@ __all__ = [
     "STATE_LOW_STOCK",
     "STATE_REPLACE_NEEDED",
     "TODO_STATUS_NEEDS_ACTION",
+    "TODO_STATUS_COMPLETED",
 ]
