@@ -18,6 +18,7 @@ from .library import (
     Library,
     LibraryError,
     TypeMeta,
+    _LIBRARY_DIR,
     load_library,
     parse_consumable,
     parse_device,
@@ -31,6 +32,32 @@ USER_LIBRARY_FILE = "user_library.json"
 def user_library_path(hass: HomeAssistant) -> Path:
     """用户库文件绝对路径（不保证存在）。"""
     return Path(hass.config.path(USER_LIBRARY_DIR, USER_LIBRARY_FILE))
+
+# 进程内合并库缓存：按构成文件的 (mtime_ns, size) 签名复用 Library 实例，
+# 文件未变动时不重解析。使协调器每次刷新都能廉价取到最新（内置+用户）库，
+# 手改 user_library.json / 内置库后无需重载条目即生效（与 query_bindings 同口径）。
+_library_cache: dict[str, tuple[tuple, Library]] = {}
+
+def _library_signature(builtin_root: Path, user_path: Path | None) -> tuple:
+    """构成合并库的全部文件路径 + (mtime_ns, size) 签名。"""
+    files: list[Path] = [
+        builtin_root / "index.json",
+        builtin_root / "consumables.json",
+        builtin_root / "devices.json",
+    ]
+    names = builtin_root / "names.json"
+    if names.is_file():
+        files.append(names)
+    if user_path is not None:
+        files.append(Path(user_path))
+    sig: list[tuple[str, int, int]] = []
+    for f in files:
+        try:
+            st = f.stat()
+            sig.append((str(f), st.st_mtime_ns, st.st_size))
+        except OSError:
+            sig.append((str(f), 0, 0))
+    return tuple(sig)
 
 @dataclass(frozen=True)
 class UserLibraryData:
@@ -162,21 +189,32 @@ def load_merged_library(
 
     用户库文件缺失 → 直接返回内置库；
     用户库坏文件 → 整体忽略 + 警告日志，回退内置库（绝不因用户手改出错而拖垮集成）。
+
+    按文件改动时间戳缓存：构成库的全部文件 (mtime_ns, size) 未变时复用同一
+    Library 实例，避免协调器每次刷新都重解析 JSON。
     """
+    builtin_root = Path(base_dir) if base_dir is not None else _LIBRARY_DIR
+    sig = _library_signature(builtin_root, user_path)
+    cache_key = str(user_path)
+    cached = _library_cache.get(cache_key)
+    if cached is not None and cached[0] == sig:
+        return cached[1]
     builtin = load_library(base_dir)
     if user_path is None or not Path(user_path).is_file():
-        return builtin
-    try:
-        user = read_user_library(Path(user_path), builtin)
-    except (LibraryError, ValueError, OSError) as err:
-        # ValueError 覆盖 json.JSONDecodeError；OSError 覆盖读盘失败
-        LOGGER.warning(
-            "用户库 %s 校验失败，已整体忽略并回退内置库：%s", user_path, err
-        )
-        return builtin
-    if user.is_empty:
-        return builtin
-    return merge_library(builtin, user)
+        library = builtin
+    else:
+        try:
+            user = read_user_library(Path(user_path), builtin)
+        except (LibraryError, ValueError, OSError) as err:
+            # ValueError 覆盖 json.JSONDecodeError；OSError 覆盖读盘失败
+            LOGGER.warning(
+                "用户库 %s 校验失败，已整体忽略并回退内置库：%s", user_path, err
+            )
+            library = builtin
+        else:
+            library = builtin if user.is_empty else merge_library(builtin, user)
+    _library_cache[cache_key] = (sig, library)
+    return library
 
 async def async_load_library(hass: HomeAssistant) -> Library:
     """异步入口：executor 中加载内置库 + 用户库合并结果。

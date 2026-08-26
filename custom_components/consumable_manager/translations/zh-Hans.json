@@ -1,15 +1,6 @@
 {
   "title": "耗材管理器",
   "config": {
-    "abort": {
-      "already_configured": "该类型已添加",
-      "item_not_found": "未找到该库存项"
-    },
-    "error": {
-      "required": "此项必填",
-      "invalid_key": "类型键仅允许小写字母、数字与下划线",
-      "key_exists": "该类型键已存在"
-    },
     "step": {
       "user": {
         "data": {
@@ -30,6 +21,17 @@
         "description": "定义一个新的耗材类型，将写入用户库（与内置类型合并）。类型键仅允许小写字母、数字与下划线，且不能与已有类型重复。",
         "title": "自定义耗材类型"
       }
+    },
+    "abort": {
+      "already_configured": "该类型已添加",
+      "item_not_found": "未找到该库存项"
+    },
+    "error": {
+      "required": "此项必填",
+      "invalid_key": "类型键仅允许小写字母、数字与下划线",
+      "key_exists": "该类型键已存在",
+      "invalid": "格式无效",
+      "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）"
     }
   },
   "selector": {
@@ -122,7 +124,8 @@
   },
   "options": {
     "error": {
-      "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）"
+      "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）",
+      "invalid": "格式无效"
     },
     "step": {
       "add_item": {
@@ -171,9 +174,10 @@
       },
       "custom_entity": {
         "title": "自定义耗材实体",
-        "description": "自建一条耗材数据：名称（默认即当前耗材条目）、添加/更换时间，以及已使用时长阈值；保存后直接生成对应的更换状态诊断实体（不绑定任何实体）。",
+        "description": "自建一条耗材数据：名称（默认即当前耗材条目）、可选绑定本类型耗材、添加/更换时间，以及已使用时长阈值；保存后直接生成对应的更换状态诊断实体。绑定耗材后，待办与诊断实体会显示该具体耗材。",
         "data": {
           "name": "名称",
+          "consumable_id": "绑定耗材",
           "added_at": "添加时间",
           "threshold": "寿命阈值",
           "threshold_unit": "单位"
@@ -408,6 +412,10 @@
         "item": {
           "name": "关联库存项",
           "description": "可选关联的库存项"
+        },
+        "group_id": {
+          "name": "目标分组",
+          "description": "绑定写入的目标分组 ID；留空写入默认分组（无分组则自动创建默认分组）"
         },
         "record_device": {
           "name": "记入设备映射",

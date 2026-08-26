@@ -1,15 +1,6 @@
 {
   "title": "Consumable Manager",
   "config": {
-    "abort": {
-      "already_configured": "This type is already added",
-      "item_not_found": "Stock item not found"
-    },
-    "error": {
-      "required": "This field is required",
-      "invalid_key": "Type key allows only lowercase letters, digits and underscores",
-      "key_exists": "This type key already exists"
-    },
     "step": {
       "user": {
         "data": {
@@ -30,6 +21,17 @@
         "description": "Define a new consumable type, written into the user library (merged with built-in types). The type key allows only lowercase letters, digits and underscores, and must not duplicate an existing type.",
         "title": "Custom consumable type"
       }
+    },
+    "abort": {
+      "already_configured": "This type is already added",
+      "item_not_found": "Stock item not found"
+    },
+    "error": {
+      "required": "This field is required",
+      "invalid_key": "Type key allows only lowercase letters, digits and underscores",
+      "key_exists": "This type key already exists",
+      "invalid": "Invalid format",
+      "no_channel": "Select at least one notification channel (system notification or entities)"
     }
   },
   "selector": {
@@ -122,7 +124,8 @@
   },
   "options": {
     "error": {
-      "no_channel": "Select at least one notification channel (system notification or entities)"
+      "no_channel": "Select at least one notification channel (system notification or entities)",
+      "invalid": "Invalid format"
     },
     "step": {
       "add_item": {
@@ -171,9 +174,10 @@
       },
       "custom_entity": {
         "title": "Custom consumable entity",
-        "description": "Build one consumable record: name (defaults to the current consumable entry), added/replaced date, and an elapsed-used-time threshold. Saving creates a corresponding replace-status diagnostic entity (no entity bound).",
+        "description": "Build one consumable record: name (defaults to the current consumable entry), optionally bind a consumable of this type, added/replaced date, and an elapsed-used-time threshold. Saving creates a corresponding replace-status diagnostic entity. Binding a consumable makes the todo and diagnostic entity show that specific consumable.",
         "data": {
           "name": "Name",
+          "consumable_id": "Bind consumable",
           "added_at": "Added date",
           "threshold": "Lifetime threshold",
           "threshold_unit": "Unit"
@@ -408,6 +412,10 @@
         "item": {
           "name": "Linked stock item",
           "description": "Optional stock item to link"
+        },
+        "group_id": {
+          "name": "Target group",
+          "description": "Target binding group ID to write into; leave empty for the default group (auto-created if none)"
         },
         "record_device": {
           "name": "Record device mapping",
