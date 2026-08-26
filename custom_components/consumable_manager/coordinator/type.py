@@ -510,20 +510,6 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             local.strftime("%Y-%m-%d %H:%M"),
         )
 
-    def _consumables_label(self) -> str | None:
-        """该类型耗材信息（来自库）：「耗材：名称（单位）、…」列表。"""
-        library = self._library
-        if library is None:
-            return None
-        items = library.by_type(self.cons_type)
-        if not items:
-            return None
-        locale = self.hass.config.language
-        names = "、".join(
-            f"{c.display_name(locale)}（{c.unit}）" for c in items
-        )
-        return self._md_kv(NOTIFY_TEXT_CONSUMABLES, names)
-
     def _custom_bound_consumables_label(self) -> str | None:
         """自定义分组绑定了具体耗材时，待办优先显示该耗材（而非类型全部）。"""
         library = self._library
@@ -559,41 +545,52 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         area = ar.async_get(self.hass).async_get_area(device.area_id)
         return getattr(area, "name", None) or None
 
+    def _device_mm(self, entity_id: str) -> tuple[str | None, str | None]:
+        """从实体→设备注册表取厂商+型号（实时，避免固化快照过期）。
+
+        与 services.py 的 _resolve_entity_info 同源；query_bindings 的
+        suggested 走的就是这份实时设备信息，保证待办描述口径一致。
+        """
+        ent_reg = er.async_get(self.hass)
+        reg_get = getattr(ent_reg, "async_get", None)
+        if not callable(reg_get):
+            return None, None
+        ent = reg_get(entity_id)
+        if ent is None or not getattr(ent, "device_id", None):
+            return None, None
+        dev_reg = dr.async_get(self.hass)
+        dev_get = getattr(dev_reg, "async_get", None)
+        if not callable(dev_get):
+            return None, None
+        device = dev_get(ent.device_id)
+        if device is None:
+            return None, None
+        return (
+            getattr(device, "manufacturer", None),
+            getattr(device, "model", None),
+        )
+
     def _entity_consumables(self,
         snapshot: dict[str, Any],
     ) -> tuple[str | None, str | None]:
         """设备绑定的耗材（库内按 manufacturer+model 匹配）。"""
         if self._library is None:
             return None, None
+        # 解析设备厂商/型号：优先实时注册表（实体→设备），与 query_bindings 的
+        # suggested 口径完全一致；注册表取不到（如手动绑定且无设备实体）时回退快照。
+        # 这样即使固化快照缺/过期，只要实体仍挂在 HA 设备上，就能解析出具体耗材，
+        # 而非错误地回退「类型全部耗材」或直接「未知」。
         manufacturer = snapshot.get("manufacturer")
         model = snapshot.get("device_model")
-        # 原始快照缺厂商/型号（含回退后仍取不到的实体，如未关联设备的独立实体）
-        input_missing = not manufacturer or not model
-        if input_missing:
-            eid = snapshot.get("entity_id")
-            if eid:
-                ent_reg = er.async_get(self.hass)
-                reg_get = getattr(ent_reg, "async_get", None)
-                if callable(reg_get):
-                    ent = reg_get(eid)
-                    device = None
-                    if ent and getattr(ent, "device_id", None):
-                        dev_reg = dr.async_get(self.hass)
-                        dev_get = getattr(dev_reg, "async_get", None)
-                        if callable(dev_get):
-                            device = dev_get(ent.device_id)
-                    if device is not None:
-                        manufacturer = manufacturer or getattr(
-                            device, "manufacturer", None)
-                        model = model or getattr(device, "model", None)
+        if (eid := snapshot.get("entity_id")):
+            live_m, live_model = self._device_mm(eid)
+            if live_m or live_model:
+                manufacturer = live_m or manufacturer
+                model = live_model or model
         items = self._library.find_compatible(manufacturer, model)
-        if not items and input_missing:
-            # 仅当实体无任何设备信息时才回退到条目类型对应的全部耗材，
-            # 避免「设备型号明确但库未收录」时被误列成全部电池/滤芯。
-            ctype = getattr(self, "cons_type", None)
-            if ctype:
-                items = list(self._library.by_type(ctype))
         if not items:
+            # 未匹配到具体耗材（设备未收录 / 无设备信息）→ 交由调用方显示「未知」，
+            # 不再回退「类型全部耗材」，避免误把整类耗材（如全部电池）列出来。
             return None, None
         locale = self.hass.config.language
         names = "、".join(
@@ -646,7 +643,11 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 getattr(state, "name", None)
                 or (state.attributes.get("friendly_name") if state else None)
             )
-            snapshot = snapshots.get(eid, {})
+            # 正则/手动匹配的实体没有绑定快照（不在 source_snapshots 中），
+            # 但仍可能关联了 HA 设备。传 entity_id 让 _entity_consumables 的
+            # 实时注册表回退能反查设备→耗材，与 query_bindings 的 suggested 口径一致；
+            # 若实体确实无任何设备信息，才在调用方显示「未知」。
+            snapshot = snapshots.get(eid) or {"entity_id": eid}
             display = state_name or snapshot.get("device_name")
             if display:
                 lines.append(self._md_kv(NOTIFY_TEXT_DESC_DEVICE, display))
@@ -668,11 +669,27 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 )
             parts.append("\n".join(lines))
         if not parts:
-            # 无触发实体（如刚恢复）：优先显示自定义分组绑定的具体耗材，
-            # 否则保留类型耗材信息（该类型全部耗材）
-            parts.append(
-                self._custom_bound_consumables_label() or self._consumables_label()
-            )
+            # 无触发实体（如刚恢复）：优先自定义分组绑定的具体耗材；
+            # 其次按本条目各绑定实体的设备（find_compatible）匹配具体耗材，
+            # 命中则显示具体耗材而非类型全部；全未命中显示「未知」。
+            label = self._custom_bound_consumables_label()
+            if label is None:
+                matched: list[str] = []
+                seen: set[str] = set()
+                for snap in self.source_snapshots:
+                    names, _specs = self._entity_consumables(snap)
+                    if names and names not in seen:
+                        matched.append(names)
+                        seen.add(names)
+                if matched:
+                    label = self._md_kv(
+                        NOTIFY_TEXT_CONSUMABLES, "、".join(matched))
+                else:
+                    label = self._md_kv(
+                        NOTIFY_TEXT_CONSUMABLES,
+                        self._notify_text(NOTIFY_TEXT_UNKNOWN),
+                    )
+            parts.append(label)
         if last := self._last_replaced_label():
             parts.append(last)
         return "\n\n".join(parts) if parts else None

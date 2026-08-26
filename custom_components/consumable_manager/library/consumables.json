@@ -8,8 +8,7 @@
     "meta": {
       "size": "26.5mm x 17.5mm x 48.5mm",
       "voltage": 9,
-      "chemistry": "Alkaline",
-      "application": "万用表、烟雾报警器、无线麦克风"
+      "chemistry": "Alkaline"
     }
   },
   {
@@ -22,8 +21,7 @@
       "size": "28.5mm x 10.3mm",
       "voltage": 12,
       "chemistry": "Alkaline",
-      "alias": "23A, MN21, V23GA",
-      "application": "车库门遥控器、安防遥控器"
+      "alias": "23A, MN21, V23GA"
     }
   },
   {
@@ -35,8 +33,7 @@
     "meta": {
       "size": "14mm x 50mm",
       "voltage": 1.5,
-      "chemistry": "Alkaline",
-      "application": "无线鼠标键盘、遥控器、电动玩具"
+      "chemistry": "Alkaline"
     }
   },
   {
@@ -48,8 +45,7 @@
     "meta": {
       "size": "10.5mm x 44.5mm",
       "voltage": 1.5,
-      "chemistry": "Alkaline",
-      "application": "遥控器、挂钟、计算器、蓝牙耳机"
+      "chemistry": "Alkaline"
     }
   },
   {
@@ -62,8 +58,7 @@
       "size": "8.3mm x 42.5mm",
       "voltage": 1.5,
       "chemistry": "Alkaline",
-      "alias": "9号电池",
-      "application": "手写笔、激光笔、血糖仪"
+      "alias": "9号电池"
     }
   },
   {
@@ -76,8 +71,7 @@
       "size": "26.2mm x 50mm",
       "voltage": 1.5,
       "chemistry": "Alkaline",
-      "alias": "2号电池",
-      "application": "手电筒、收音机、玩具"
+      "alias": "2号电池"
     }
   },
   {
@@ -89,8 +83,7 @@
     "meta": {
       "size": "17mm x 34.5mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "相机、智能传感器"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -102,8 +95,7 @@
     "meta": {
       "size": "16mm x 2.0mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "车钥匙、微型设备"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -115,8 +107,7 @@
     "meta": {
       "size": "16mm x 3.2mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "胎压监测、GPS、医疗仪器"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -128,8 +119,7 @@
     "meta": {
       "size": "20mm x 1.6mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "手表、健身手环、BIOS备份"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -141,8 +131,7 @@
     "meta": {
       "size": "20mm x 2.5mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "车钥匙、电子秤、蓝牙耳机盒"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -154,8 +143,7 @@
     "meta": {
       "size": "20mm x 3.2mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "主板CMOS、AirTag、无线门铃"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -168,8 +156,7 @@
       "size": "24mm x 3.0mm",
       "voltage": 3,
       "chemistry": "Li-Mn",
-      "alias": "DL2430, ECR2430",
-      "application": "智能开关、医疗遥控器"
+      "alias": "DL2430, ECR2430"
     }
   },
   {
@@ -181,8 +168,7 @@
     "meta": {
       "size": "24.5mm x 5.0mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "智能门锁、GPS 记录仪"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -194,8 +180,7 @@
     "meta": {
       "size": "24.5mm x 7.7mm",
       "voltage": 3,
-      "chemistry": "Li-Mn",
-      "application": "智能水表、工业设备、人员定位卡"
+      "chemistry": "Li-Mn"
     }
   },
   {
@@ -208,8 +193,7 @@
       "size": "34.2mm x 61.5mm",
       "voltage": 1.5,
       "chemistry": "Alkaline",
-      "alias": "1号电池",
-      "application": "燃气灶、热水器、大号手电筒"
+      "alias": "1号电池"
     }
   },
   {
@@ -222,8 +206,7 @@
       "size": "11.6mm x 3.1mm",
       "voltage": 1.5,
       "chemistry": "Alkaline",
-      "alias": "AG10, LR54, SR1130",
-      "application": "计算器、助听器、玩具"
+      "alias": "AG10, LR54, SR1130"
     }
   },
   {
@@ -236,8 +219,7 @@
       "size": "7.9mm x 3.6mm",
       "voltage": 1.5,
       "chemistry": "Alkaline",
-      "alias": "AG3, SR41, LR736",
-      "application": "电子体温计、发光玩具"
+      "alias": "AG3, SR41, LR736"
     }
   },
   {
@@ -250,8 +232,7 @@
       "size": "11.6mm x 5.4mm",
       "voltage": 1.5,
       "chemistry": "Alkaline",
-      "alias": "AG13, A76, LR1154, SR44",
-      "application": "计算器、电子玩具、血糖仪、游标卡尺"
+      "alias": "AG13, A76, LR1154, SR44"
     }
   },
   {
@@ -264,8 +245,7 @@
       "size": "11.6mm x 5.4mm",
       "voltage": 1.55,
       "chemistry": "Silver Oxide",
-      "alias": "357, SR44, 303",
-      "application": "手表、精密计算器、血糖仪"
+      "alias": "357, SR44, 303"
     }
   },
   {
@@ -278,8 +258,7 @@
       "size": "6.8mm x 2.1mm",
       "voltage": 1.55,
       "chemistry": "Silver Oxide",
-      "alias": "379, AG0",
-      "application": "超薄手表、微型电子产品"
+      "alias": "379, AG0"
     }
   },
   {
@@ -292,8 +271,7 @@
       "size": "6.8mm x 2.6mm",
       "voltage": 1.55,
       "chemistry": "Silver Oxide",
-      "alias": "377, AG1, LR66",
-      "application": "手表、精密仪器"
+      "alias": "377, AG1, LR66"
     }
   },
   {
@@ -328,8 +306,7 @@
     "unit": "袋",
     "meta": {
       "form": "coconut-shell activated carbon pellets",
-      "capacity": "1kg",
-      "application": "空气净化器炭盒补充、甲醛吸附、DIY 过滤"
+      "capacity": "1kg"
     }
   },
   {
@@ -365,8 +342,7 @@
     "unit": "片",
     "meta": {
       "size_hint": "常见尺寸 200x180mm, 215x200mm, 245x195mm 等",
-      "structure": "HEPA + 活性炭双层",
-      "application": "车载空调滤清器替换 (请按车架号再查具体尺寸)"
+      "structure": "HEPA + 活性炭双层"
     }
   },
   {
@@ -410,8 +386,7 @@
     "unit": "个",
     "meta": {
       "lifetime_hours": 1200,
-      "grade": "H11",
-      "application": "中高效过滤（新风、一般净化器）"
+      "grade": "H11"
     }
   },
   {
@@ -1202,8 +1177,7 @@
     "meta": {
       "stage": "复合级（PP棉+压缩炭二合一）",
       "material": "PP熔喷+压缩活性炭",
-      "replace_months": "6-12",
-      "application": "厨下直饮 / 前置过滤"
+      "replace_months": "6-12"
     }
   },
   {
@@ -1226,7 +1200,6 @@
     "name": "Water purifier pipeline disinfectant cleaner",
     "unit": "瓶",
     "meta": {
-      "application": "滤芯更换时清洗滤瓶、管路、后置炭残留",
       "grade": "食品级柠檬酸/过氧乙酸类",
       "volume_ml": "500"
     }
@@ -1329,8 +1302,7 @@
     "meta": {
       "stage": "末端精制级",
       "material": "椰壳颗粒活性炭 / 烧结炭",
-      "replace_months": "6-12",
-      "application": "改善出水口感、去除残留氯味、抑制细菌滋生"
+      "replace_months": "6-12"
     }
   },
   {
@@ -1344,7 +1316,6 @@
       "material": "PVDF/PAN 中空纤维超滤膜",
       "pore_size_um": "0.01",
       "replace_months": "12-24",
-      "application": "保留矿物质的直饮 / 中央前置 / 商用机",
       "washable": true
     }
   }
