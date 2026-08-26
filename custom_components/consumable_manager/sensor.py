@@ -109,7 +109,6 @@ class StockItemSensor(CoordinatorEntity[StockCoordinator], SensorEntity):
     def extra_state_attributes(self) -> dict:
         return self.coordinator.item_attributes(self._item_id)
 
-
 class StockStatusSensor(CoordinatorEntity[StockCoordinator], SensorEntity):
     """库存汇总实体：主状态 = 正常 / 库存不足（枚举）。"""
 
@@ -136,7 +135,6 @@ class StockStatusSensor(CoordinatorEntity[StockCoordinator], SensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return self.coordinator.status_attributes()
-
 
 class ReplaceStatusSensor(
     CoordinatorEntity[ConsumableTypeCoordinator], SensorEntity
