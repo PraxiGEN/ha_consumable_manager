@@ -14,14 +14,12 @@ from .const import LOGGER
 from .library import (
     SCHEMA_VERSION,
     Consumable,
-    DeviceMapping,
     Library,
     LibraryError,
     TypeMeta,
     _LIBRARY_DIR,
     load_library,
     parse_consumable,
-    parse_device,
     parse_type,
 )
 
@@ -43,7 +41,6 @@ def _library_signature(builtin_root: Path, user_path: Path | None) -> tuple:
     files: list[Path] = [
         builtin_root / "index.json",
         builtin_root / "consumables.json",
-        builtin_root / "devices.json",
     ]
     names = builtin_root / "names.json"
     if names.is_file():
@@ -65,26 +62,16 @@ class UserLibraryData:
 
     types: tuple[TypeMeta, ...] = ()
     consumables: tuple[Consumable, ...] = ()
-    devices: tuple[DeviceMapping, ...] = ()
 
     @property
     def is_empty(self) -> bool:
-        return not (self.types or self.consumables or self.devices)
-
-def _device_anchors(dev: DeviceMapping) -> frozenset[tuple[str, str]]:
-    """设备条目的锚点集合：(manufacturer, model) 组合，均忽略大小写。"""
-    manufacturer = dev.manufacturer.strip().lower()
-    return frozenset(
-        (manufacturer, model.strip().lower())
-        for model in dev.models
-        if model.strip()
-    )
+        return not (self.types or self.consumables)
 
 def read_user_library(path: Path, builtin: Library) -> UserLibraryData:
     """读取并校验用户库（不含降级逻辑，校验失败抛 LibraryError）。
 
     引用完整性以「内置库 + 用户库」合并后的口径校验：
-    用户耗材可引用内置类型，用户设备可引用内置耗材 id。
+    用户耗材可引用内置类型。
     """
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
@@ -98,13 +85,10 @@ def read_user_library(path: Path, builtin: Library) -> UserLibraryData:
 
     raw_types = data.get("types") or {}
     raw_consumables = data.get("consumables") or []
-    raw_devices = data.get("devices") or []
     if not isinstance(raw_types, dict):
         raise LibraryError(f"{path}: types 应为对象（类型键 → 类型元数据）")
     if not isinstance(raw_consumables, list):
         raise LibraryError(f"{path}: consumables 应为数组")
-    if not isinstance(raw_devices, list):
-        raise LibraryError(f"{path}: devices 应为数组")
 
     # 1. 类型：用户类型可与内置类型同键（整条替换），条目字段全必填
     user_types = tuple(
@@ -125,25 +109,9 @@ def read_user_library(path: Path, builtin: Library) -> UserLibraryData:
         seen_ids.add(item.id)
         user_consumables.append(item)
 
-    # 3. 设备：可引用内置耗材；锚点（manufacturer, model）文件内不得重叠
-    known_ids = {c.id for c in builtin.consumables} | seen_ids
-    user_devices: list[DeviceMapping] = []
-    seen_anchors: set[tuple[str, str]] = set()
-    for raw in raw_devices:
-        dev = parse_device(raw, path, known_ids)
-        anchors = _device_anchors(dev)
-        if anchors & seen_anchors:
-            raise LibraryError(
-                f"{path}: 用户库设备锚点重叠（manufacturer+model 重复）: "
-                f"{dev.manufacturer} {dev.models[0]}"
-            )
-        seen_anchors |= anchors
-        user_devices.append(dev)
-
     return UserLibraryData(
         types=user_types,
         consumables=tuple(user_consumables),
-        devices=tuple(user_devices),
     )
 
 def merge_library(builtin: Library, user: UserLibraryData) -> Library:
@@ -164,21 +132,9 @@ def merge_library(builtin: Library, user: UserLibraryData) -> Library:
     }
     consumables.update({c.id: c for c in user.consumables})
 
-    # 设备：内置条目锚点与任一用户条目重叠即整条丢弃，由用户条目接管
-    user_anchors: set[tuple[str, str]] = set()
-    for dev in user.devices:
-        user_anchors |= _device_anchors(dev)
-    devices: list[DeviceMapping] = [
-        dev
-        for dev in builtin.all_devices()
-        if not (_device_anchors(dev) & user_anchors)
-    ]
-    devices.extend(user.devices)
-
     return Library(
         type_metas=tuple(types.values()),
         consumables=tuple(consumables.values()),
-        devices=tuple(devices),
     )
 
 def load_merged_library(
@@ -248,7 +204,6 @@ def _load_user_data(path: Path) -> dict[str, Any]:
             data = loaded
     data.setdefault("types", {})
     data.setdefault("consumables", [])
-    data.setdefault("devices", [])
     # 写库路径强制修正版本：损坏内容本就被降级忽略，但写出文件必须可读
     data["schema_version"] = SCHEMA_VERSION
     return data
@@ -389,169 +344,4 @@ async def async_write_user_consumable(
     path = user_library_path(hass)
     return await hass.async_add_executor_job(
         write_user_consumable, path, cons_type, model, name, unit, meta
-    )
-
-def _raw_device_anchors(entry: dict[str, Any]) -> frozenset[tuple[str, str]]:
-    """原始 dict 设备条目的锚点集合：(manufacturer, model) 组合，忽略大小写。"""
-    manufacturer = str(entry.get("manufacturer", "")).strip().lower()
-    anchors: set[tuple[str, str]] = set()
-    for m in entry.get("models") or []:
-        if isinstance(m, str) and m.strip():
-            anchors.add((manufacturer, m.strip().lower()))
-    return frozenset(anchors)
-
-def write_user_device(
-    path: Path,
-    manufacturer: str,
-    models: list[str],
-    name: str,
-    consumables: list[str],
-) -> dict[str, Any]:
-    """写入设备映射到用户库（锚点重叠整条替换），返回写入条目。"""
-    manufacturer = (manufacturer or "").strip()
-    models = list(
-        dict.fromkeys(
-            m.strip() for m in (models or []) if isinstance(m, str) and m.strip()
-        )
-    )
-    name = (name or "").strip()
-    consumables = list(
-        dict.fromkeys(
-            c.strip()
-            for c in (consumables or [])
-            if isinstance(c, str) and c.strip()
-        )
-    )
-    for label, value in (
-        ("制造商 manufacturer", manufacturer),
-        ("型号数组 models", models),
-        ("名称 name", name),
-        ("耗材列表 consumables", consumables),
-    ):
-        if not value:
-            raise LibraryError(
-                f"自定义设备缺少必填字段 {label}，无法写入用户库"
-            )
-    # 引用完整性：consumables 必须存在于「内置库 + 用户库」合并 id 集
-    builtin = load_library()
-    data = _load_user_data(path)
-    known_ids: set[str] = {c.id for c in builtin.consumables}
-    known_ids.update(
-        c.get("id")
-        for c in data["consumables"]
-        if isinstance(c, dict) and isinstance(c.get("id"), str)
-    )
-    for cid in consumables:
-        if cid not in known_ids:
-            raise LibraryError(f"未知耗材 {cid}，无法写入用户库设备映射")
-
-    entry = {
-        "manufacturer": manufacturer,
-        "models": models,
-        "name": name,
-        "consumables": consumables,
-    }
-    new_anchors = {(manufacturer.lower(), m.lower()) for m in models}
-    devices = [
-        dev
-        for dev in data["devices"]
-        if not isinstance(dev, dict)
-        or not (_raw_device_anchors(dev) & new_anchors)
-    ]
-    devices.append(entry)
-    data["devices"] = devices
-    _atomic_write_json(path, data)
-    return entry
-
-async def async_write_user_device(
-    hass: HomeAssistant,
-    manufacturer: str,
-    models: list[str],
-    name: str,
-    consumables: list[str],
-) -> dict[str, Any]:
-    """异步入口：在 executor 中把设备映射写入用户库，返回写入的条目。"""
-    path = user_library_path(hass)
-    return await hass.async_add_executor_job(
-        write_user_device, path, manufacturer,  models, name, consumables
-    )
-
-def write_user_device_consumable(
-    path: Path,
-    manufacturer: str,
-    model: str,
-    consumable_id: str,
-    device_name: str | None = None,
-) -> dict[str, Any]:
-    """把耗材合并追加进用户库设备映射（按「厂商+型号」锚点，不覆盖既有 models/name/其他耗材）。
-
-    用于「绑定实体时顺带沉淀设备映射」：同一设备型号可能已记录多个耗材，
-    本函数只追加，绝不整条替换——避免误删已有映射。
-    """
-    manufacturer = (manufacturer or "").strip()
-    model = (model or "").strip()
-    consumable_id = (consumable_id or "").strip()
-    if not manufacturer or not model or not consumable_id:
-        raise LibraryError("写入设备映射缺少 厂商/型号/耗材")
-    builtin = load_library()
-    data = _load_user_data(path)
-    known_ids: set[str] = {c.id for c in builtin.consumables}
-    known_ids.update(
-        c.get("id")
-        for c in data["consumables"]
-        if isinstance(c, dict) and isinstance(c.get("id"), str)
-    )
-    if consumable_id not in known_ids:
-        raise LibraryError(f"未知耗材 {consumable_id}，无法写入用户库设备映射")
-    new_anchor = (manufacturer.lower(), model.lower())
-    existing: dict[str, Any] | None = None
-    for dev in data.get("devices", []):
-        if isinstance(dev, dict) and new_anchor in _raw_device_anchors(dev):
-            existing = dev
-            break
-    if existing is not None:
-        merged_consumables = list(dict.fromkeys(
-            [*(existing.get("consumables") or []), consumable_id]
-        ))
-        merged_models = list(dict.fromkeys(
-            [*(existing.get("models") or []), model]
-        ))
-        name = existing.get("name") or device_name or manufacturer
-        entry = {
-            "manufacturer": existing.get("manufacturer") or manufacturer,
-            "models": merged_models,
-            "name": name,
-            "consumables": merged_consumables,
-        }
-    else:
-        entry = {
-            "manufacturer": manufacturer,
-            "models": [model],
-            "name": device_name or manufacturer,
-            "consumables": [consumable_id],
-        }
-    new_anchors = _raw_device_anchors(entry)
-    devices = [
-        dev
-        for dev in data["devices"]
-        if not isinstance(dev, dict)
-        or not (_raw_device_anchors(dev) & new_anchors)
-    ]
-    devices.append(entry)
-    data["devices"] = devices
-    _atomic_write_json(path, data)
-    return entry
-
-async def async_write_user_device_consumable(
-    hass: HomeAssistant,
-    manufacturer: str,
-    model: str,
-    consumable_id: str,
-    device_name: str | None = None,
-) -> dict[str, Any]:
-    """异步入口：在 executor 中把耗材合并追加进用户库设备映射。"""
-    path = user_library_path(hass)
-    return await hass.async_add_executor_job(
-        write_user_device_consumable, path, manufacturer, model,
-        consumable_id, device_name
     )
