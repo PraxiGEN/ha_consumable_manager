@@ -12,8 +12,9 @@ from .const import LOGGER, THRESHOLD_TYPES
 SCHEMA_VERSION = 1
 # 耗材 id 约定：<type>_<slug>，小写字母/数字/下划线
 ID_PATTERN = re.compile(r"^[a-z0-9_]+$")
-# name 多语言回退链（在精确 locale 未命中时依次尝试）
-LOCALE_FALLBACKS: tuple[str, ...] = ("zh-Hans", "en")
+# name 多语言回退链：精确 locale → 英文(en) → 中文(zh-Hans)。
+# 即「中文显示中文，其他语言默认英文」，整集成统一（display_name 各处共用）。
+LOCALE_FALLBACKS: tuple[str, ...] = ("en", "zh-Hans")
 # 多语言字段原始形态：plain 字符串或 locale → 文案 映射
 LocalizedText = str | dict[str, str]
 _LIBRARY_DIR = Path(__file__).resolve().parent / "library"
@@ -271,10 +272,7 @@ def _load_names_table(root: Path) -> tuple[
     )
 
 def load_library(base_dir: Path | None = None) -> Library:
-    """加载并校验 library/ 目录，返回装配完成的 Library。
-
-    base_dir 缺省为集成包内 library/ 目录。
-    """
+    """加载并校验 library/ 目录，返回装配完成的 Library。"""
     root = Path(base_dir) if base_dir is not None else _LIBRARY_DIR
     index_path = root / "index.json"
     _require(index_path.is_file(), f"耗材库缺少 index.json: {index_path}")
@@ -286,10 +284,10 @@ def load_library(base_dir: Path | None = None) -> Library:
         f"耗材库 schema_version={schema_version} 不受支持（当前支持 {SCHEMA_VERSION}）",
     )
 
-    # 0. 多语言映射表（可选附属文件）
+    # 多语言映射表（可选附属文件）
     type_names, consumable_names = _load_names_table(root)
 
-    # 1. 类型元数据表
+    # 类型元数据表
     raw_types = index.get("types")
     _require(
         isinstance(raw_types, dict) and raw_types,
@@ -301,7 +299,7 @@ def load_library(base_dir: Path | None = None) -> Library:
     )
     known_types = {t.key: t for t in type_metas}
 
-    # 2. 耗材扁平数组
+    # 耗材扁平数组
     consumables_path = root / "consumables.json"
     _require(
         consumables_path.is_file(), f"耗材库缺少 consumables.json: {consumables_path}"
