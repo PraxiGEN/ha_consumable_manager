@@ -65,7 +65,6 @@
     },
     "threshold_unit": {
       "options": {
-        "%": "Percent",
         "days": "Days",
         "hours": "Hours",
         "minutes": "Minutes",

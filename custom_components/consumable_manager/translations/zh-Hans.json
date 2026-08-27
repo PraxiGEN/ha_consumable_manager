@@ -65,7 +65,6 @@
     },
     "threshold_unit": {
       "options": {
-        "%": "百分比",
         "days": "天",
         "hours": "小时",
         "minutes": "分钟",
