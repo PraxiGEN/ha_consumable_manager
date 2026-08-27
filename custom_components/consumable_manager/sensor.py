@@ -57,6 +57,16 @@ REPLACE_STATUS_DESCRIPTION = SensorEntityDescription(
     options=list(REPLACE_STATES),
     entity_category=EntityCategory.DIAGNOSTIC,
 )
+# 分组数据传感器：主状态 = 组内实时值最小值（纯数值、不带单位，便于自动化比较）；
+# 属性暴露「已绑定实体数据」——每条组装成「实体名称 + 实体返回值」字符串，
+# 直接取实体的原始 state，不手动追加单位（实体返回什么就显示什么）。
+# 实体名 = 分组名 + 「数据」后缀（动态拼接，零硬编码），避免与诊断实体（仅分组名）重名；
+# translation_key 仅用于属性翻译（分组 / 耗材类型 / 已绑定实体数据）。
+GROUP_DATA_DESCRIPTION = SensorEntityDescription(
+    key="group_entity_data",
+    translation_key="group_entity_data",
+    state_class=SensorStateClass.MEASUREMENT,
+)
 
 def build_item_description(item: dict) -> SensorEntityDescription:
     """按用户配置的库存项动态构建描述符（名称与单位均来自用户输入）。"""
@@ -164,11 +174,80 @@ class ReplaceStatusSensor(
 
     @property
     def icon(self) -> str:
-        return _ICON_BY_STATE[self.coordinator.group_status(self._group)]
+        # 继承耗材类型图标，使同类型条目下实体视觉统一归属
+        return self.coordinator.type_icon
 
     @property
     def extra_state_attributes(self) -> dict:
         return self.coordinator.group_attributes(self._group)
+
+class GroupDataSensor(
+    CoordinatorEntity[ConsumableTypeCoordinator], SensorEntity
+):
+    """分组数据传感器：主状态 = 组内实时值最小值，属性暴露成员明细。
+
+    命名冲突规避：诊断实体（ReplaceStatusSensor）以「分组名」作实体名（_attr_name），
+    本传感器以「分组名 + 数据」作实体名（如「客厅数据」），两者子名不同、天然不撞名；
+    unique_id 前缀也不同（_grp_ vs _grpdata_）。名称由分组名动态拼接，零硬编码。
+    仅非自定义分组生成（自定义分组无绑定实体，无成员数据可暴露）。
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: ConsumableTypeCoordinator,
+        description: SensorEntityDescription,
+        group: dict[str, Any],
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = description
+        self._group = group
+        group_id = group.get(CONF_GROUP_ID, "default")
+        group_name = group.get(CONF_GROUP_NAME) or "默认"
+        self._attr_unique_id = f"{coordinator.entry_id}_grpdata_{group_id}"
+        self._attr_device_info = coordinator.device_info
+        # 实体名 = 分组名 + 「数据」后缀，避免与诊断实体（仅分组名）重名
+        self._attr_name = f"{group_name}数据"
+        # 主状态 = 组内实时值最小值（纯数值，不带单位，便于自动化比较）
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.group_min_value(self._group)
+
+    @property
+    def icon(self) -> str:
+        # 继承耗材类型图标，使同类型条目下实体视觉统一归属
+        return self.coordinator.type_icon
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        data = self.coordinator.group_member_data(self._group)
+        # 拍平为「已绑定实体数据」：每条组装成「实体名称 + 实体返回值」，
+        # 直接取实体的原始 state，不手动追加单位（实体返回什么就显示什么）
+        members = (
+            data.get("normal_entities", [])
+            + data.get("triggered_entities", [])
+        )
+        bound: list[str] = []
+        for m in members:
+            name = m["name"]
+            entity_id = m["entity_id"]
+            state = self.coordinator.hass.states.get(entity_id)
+            raw = (
+                state.state
+                if state is not None
+                and state.state not in (None, "unknown", "unavailable")
+                else None
+            )
+            bound.append(
+                f"{name} {raw}" if raw is not None else f"{name} 未知"
+            )
+        return {
+            "group": data.get("group"),
+            "consumable_type": data.get("consumable_type"),
+            "bound_entity_data": bound,
+        }
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -210,9 +289,14 @@ async def async_setup_entry(
     groups = coordinator.groups
     if not groups:
         return
-    async_add_entities(
-        [
+    entities: list[SensorEntity] = []
+    for group in groups:
+        entities.append(
             ReplaceStatusSensor(coordinator, REPLACE_STATUS_DESCRIPTION, group)
-            for group in groups
-        ]
-    )
+        )
+        # 分组数据传感器仅对有绑定实体的非自定义分组生成
+        if not coordinator._group_is_custom(group):
+            entities.append(
+                GroupDataSensor(coordinator, GROUP_DATA_DESCRIPTION, group)
+            )
+    async_add_entities(entities)
