@@ -60,14 +60,39 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return self.entry_type
 
     @property
+    def type_icon(self) -> str:
+        """该耗材类型的图标（来自库类型元数据）；自定义 / 缺失时回退通用图标。
+
+        供分组传感器（ReplaceStatusSensor / GroupDataSensor）统一继承，
+        使同类型条目下所有实体视觉上归属同一耗材类别。
+        """
+        if self._type_meta is not None and self._type_meta.icon:
+            return self._type_meta.icon
+        if self._library is not None:
+            icon = self._library.type_icon(self.cons_type)
+            if icon:
+                return icon
+        return "mdi:package-variant"
+
+    @property
     def entity_signature(self) -> tuple[str, ...]:
-        """按分组生成诊断实体键（分组增删触发重载，重命名不触发漂移）。"""
+        """按分组生成实体键（分组增删触发重载，重命名不触发漂移）。
+
+        每个非自定义分组生成两类实体键：
+        - replace_status：诊断实体（状态枚举）
+        - group_entity_data：分组数据传感器（组最小值 + 成员明细）
+        自定义分组无绑定实体，仅生成 replace_status（按已用时长判定）。
+        """
         groups = self.groups
         if not groups:
             return ()
         return tuple(
             f"replace_status:{g.get(CONF_GROUP_ID, i)}"
             for i, g in enumerate(groups)
+        ) + tuple(
+            f"group_entity_data:{g.get(CONF_GROUP_ID, i)}"
+            for i, g in enumerate(groups)
+            if not self._group_is_custom(g)
         )
 
     # ---- 绑定分组（多分组 → 多诊断实体；旧扁平 source_entities 向后兼容）----
@@ -113,7 +138,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return result
 
     def _entity_snapshot(self, entity_id: str) -> dict[str, Any]:
-        """现场构建单个实体的最小快照（正则动态命中实体用；不依赖 config_flow）。"""
+        """现场构建单个实体的最小快照（正则动态命中实体用；不依赖 config_flow）。
+
+        仅取展示用设备名；耗材由显式绑定的 consumable_id 决定（不再设备自动匹配）。
+        """
         ent_reg = er.async_get(self.hass)
         dev_reg = dr.async_get(self.hass)
         reg_entry = None
@@ -128,8 +156,6 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return {
             "entity_id": entity_id,
             "device_name": getattr(device, "name", None),
-            "device_model": getattr(device, "model", None),
-            "manufacturer": getattr(device, "manufacturer", None),
         }
 
     def _regex_match_entities(self, pattern: str) -> list[str]:
@@ -483,6 +509,94 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             "last_replaced": self.last_replaced,
         }
 
+    def group_min_value(self, group: dict[str, Any]) -> float | None:
+        """分组内实体实时值的最小值（None 不参与比较，全 None 返回 None）。
+
+        供「分组数据传感器」作主状态：最小值最能代表组内最紧绷的实体，
+        便于自动化直接读取阈值边界。时间类阈值已换算到标准单位后取最小。
+        """
+        if self._group_is_custom(group):
+            return None
+        values = [
+            v
+            for v in self._read_values(self._group_resolved(group))
+            if v is not None
+        ]
+        return min(values) if values else None
+
+    def group_member_data(self, group: dict[str, Any]) -> dict[str, Any]:
+        """分组成员明细（分正常 / 已触发两类），供分组数据传感器暴露给自动化。
+
+        每条成员含 entity_id / 显示名 / 实时值 / 单位；已触发成员按阈值单独归类。
+        自定义分组无绑定实体，返回空明细（仅留分组元信息）。
+        """
+        if self._group_is_custom(group):
+            return {
+                "group": group.get(CONF_GROUP_NAME),
+                "consumable_type": self.cons_type,
+                "custom_consumable_entity": True,
+                "normal_entities": [],
+                "triggered_entities": [],
+                "last_replaced": self.last_replaced,
+            }
+        g_resolved = self._group_resolved(group)
+        ttype, tval, tunit, top = self._group_threshold(group)
+        triggered = set(self.triggered_entities())
+        manual = self._group_manual_entities(group)
+        regex = self._regex_match_entities(group.get(CONF_ENTITY_REGEX, ""))
+        snapshots = {
+            snap["entity_id"]: snap
+            for snap in self.source_snapshots
+            if snap.get("entity_id")
+        }
+        normal: list[dict[str, Any]] = []
+        triggered_list: list[dict[str, Any]] = []
+        for entity_id in g_resolved:
+            snapshot = snapshots.get(entity_id, {})
+            # 实体已绑定具体耗材 → 解析耗材显示名（悬空/未绑定 → None）
+            cid = snapshot.get("consumable_id")
+            consumable_name = None
+            if cid and self._library is not None:
+                c = self._library.get(cid)
+                if c is not None:
+                    consumable_name = c.display_name(self.hass.config.language)
+            state = self.hass.states.get(entity_id)
+            state_name = (
+                getattr(state, "name", None)
+                or (state.attributes.get("friendly_name") if state else None)
+            )
+            display = (
+                state_name
+                or snapshot.get("device_name")
+                or entity_id
+            )
+            raw = self._read_values([entity_id], ttype)[0]
+            entry_d = {
+                "entity_id": entity_id,
+                "name": display,
+                "value": raw,
+                "unit": tunit,
+                "consumable": consumable_name,
+            }
+            if entity_id in triggered:
+                triggered_list.append(entry_d)
+            else:
+                normal.append(entry_d)
+        return {
+            "group": group.get(CONF_GROUP_NAME),
+            "consumable_type": self.cons_type,
+            "threshold_type": ttype,
+            "threshold": tval,
+            "threshold_unit": tunit,
+            "threshold_operator": top,
+            "source_entities": self._group_entities(group),
+            "manual_entities": manual,
+            "regex_matched": regex,
+            "normal_entities": normal,
+            "triggered_entities": triggered_list,
+            "last_replaced": self.last_replaced,
+        }
+
     def status_attributes(self) -> dict[str, Any]:
         return {
             "consumable_type": self.cons_type,
@@ -545,63 +659,31 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         area = ar.async_get(self.hass).async_get_area(device.area_id)
         return getattr(area, "name", None) or None
 
-    def _device_mm(self, entity_id: str) -> tuple[str | None, str | None]:
-        """从实体→设备注册表取厂商+型号（实时，避免固化快照过期）。
-
-        与 services.py 的 _resolve_entity_info 同源；query_bindings 的
-        suggested 走的就是这份实时设备信息，保证待办描述口径一致。
-        """
-        ent_reg = er.async_get(self.hass)
-        reg_get = getattr(ent_reg, "async_get", None)
-        if not callable(reg_get):
-            return None, None
-        ent = reg_get(entity_id)
-        if ent is None or not getattr(ent, "device_id", None):
-            return None, None
-        dev_reg = dr.async_get(self.hass)
-        dev_get = getattr(dev_reg, "async_get", None)
-        if not callable(dev_get):
-            return None, None
-        device = dev_get(ent.device_id)
-        if device is None:
-            return None, None
-        return (
-            getattr(device, "manufacturer", None),
-            getattr(device, "model", None),
-        )
-
     def _entity_consumables(self,
         snapshot: dict[str, Any],
     ) -> tuple[str | None, str | None]:
-        """设备绑定的耗材（库内按 manufacturer+model 匹配）。"""
+        """实体绑定的具体耗材（取自快照中的 consumable_id，显式绑定）。
+
+        绑定耗材到实体是显式动作（bind 服务写入 consumable_id）；不再按设备
+        自动匹配（已移除设备映射库）。无 consumable_id → 返回 None，由调用方
+        显示「未知」。
+        """
         if self._library is None:
             return None, None
-        # 解析设备厂商/型号：优先实时注册表（实体→设备），与 query_bindings 的
-        # suggested 口径完全一致；注册表取不到（如手动绑定且无设备实体）时回退快照。
-        # 这样即使固化快照缺/过期，只要实体仍挂在 HA 设备上，就能解析出具体耗材，
-        # 而非错误地回退「类型全部耗材」或直接「未知」。
-        manufacturer = snapshot.get("manufacturer")
-        model = snapshot.get("device_model")
-        if (eid := snapshot.get("entity_id")):
-            live_m, live_model = self._device_mm(eid)
-            if live_m or live_model:
-                manufacturer = live_m or manufacturer
-                model = live_model or model
-        items = self._library.find_compatible(manufacturer, model)
-        if not items:
-            # 未匹配到具体耗材（设备未收录 / 无设备信息）→ 交由调用方显示「未知」，
-            # 不再回退「类型全部耗材」，避免误把整类耗材（如全部电池）列出来。
+        cid = snapshot.get("consumable_id")
+        if not cid:
+            return None, None
+        consumable = self._library.get(cid)
+        if consumable is None:
+            # 引用的耗材已从库中移除（如用户库条目被删）→ 视为未知，不报错
             return None, None
         locale = self.hass.config.language
-        names = "、".join(
-            f"{c.display_name(locale)}（{c.unit}）" for c in items
+        names = f"{consumable.display_name(locale)}（{consumable.unit}）"
+        specs = (
+            json.dumps(consumable.meta, ensure_ascii=False)
+            if consumable.meta else None
         )
-        # 规格仅给 JSON（名称已在「耗材」行展示，避免重复前缀），多条用分号拼接为单行
-        specs = "；".join(
-            json.dumps(c.meta, ensure_ascii=False)
-            for c in items if c.meta
-        )
-        return names, specs or None
+        return names, specs
 
     def _replace_summary(self, entity_id: str) -> str:
         """更换待办标题：设备名称 + 「请更换耗材。」（通用话术，按语言）。"""
@@ -617,11 +699,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             or (state.attributes.get("friendly_name") if state else None)
         )
         # 显示名取值：friendly_name 优先（用户自定义实体名），
-        # 其次设备注册表设备名，再次型号，最后实体 id。
+        # 其次设备注册表设备名，最后实体 id。
         display = (
             state_name
             or snapshot.get("device_name")
-            or snapshot.get("device_model")
             or entity_id
         )
         return f"{display} {self._notify_text(NOTIFY_TEXT_REPLACE_NEEDED)}"
@@ -644,9 +725,8 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 or (state.attributes.get("friendly_name") if state else None)
             )
             # 正则/手动匹配的实体没有绑定快照（不在 source_snapshots 中），
-            # 但仍可能关联了 HA 设备。传 entity_id 让 _entity_consumables 的
-            # 实时注册表回退能反查设备→耗材，与 query_bindings 的 suggested 口径一致；
-            # 若实体确实无任何设备信息，才在调用方显示「未知」。
+            # 但若它们后续被显式绑定（bind 服务写入 consumable_id），此处透传
+            # entity_id 即可被快照命中；未绑定的实体显示「未知」。
             snapshot = snapshots.get(eid) or {"entity_id": eid}
             display = state_name or snapshot.get("device_name")
             if display:
@@ -670,8 +750,8 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             parts.append("\n".join(lines))
         if not parts:
             # 无触发实体（如刚恢复）：优先自定义分组绑定的具体耗材；
-            # 其次按本条目各绑定实体的设备（find_compatible）匹配具体耗材，
-            # 命中则显示具体耗材而非类型全部；全未命中显示「未知」。
+            # 其次按本条目各绑定快照的 consumable_id 显示具体耗材；
+            # 全未命中显示「未知」。
             label = self._custom_bound_consumables_label()
             if label is None:
                 matched: list[str] = []
@@ -823,11 +903,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 getattr(state, "name", None)
                 or (state.attributes.get("friendly_name") if state else None)
             )
-            # friendly_name 优先（用户自定义实体名），其次设备名/型号，最后实体 id
+            # friendly_name 优先（用户自定义实体名），其次设备名，最后实体 id
             display = (
                 state_name
                 or snapshot.get("device_name")
-                or snapshot.get("device_model")
                 or entity_id
             )
             value_text = _to_float(value) if value is not None else None
