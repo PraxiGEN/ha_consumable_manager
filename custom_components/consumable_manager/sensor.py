@@ -57,11 +57,7 @@ REPLACE_STATUS_DESCRIPTION = SensorEntityDescription(
     options=list(REPLACE_STATES),
     entity_category=EntityCategory.DIAGNOSTIC,
 )
-# 分组数据传感器：主状态 = 组内实时值最小值（纯数值、不带单位，便于自动化比较）；
-# 属性暴露「已绑定实体数据」——每条组装成「实体名称 + 实体返回值」字符串，
-# 直接取实体的原始 state，不手动追加单位（实体返回什么就显示什么）。
-# 实体名 = 分组名 + 「数据」后缀（动态拼接，零硬编码），避免与诊断实体（仅分组名）重名；
-# translation_key 仅用于属性翻译（分组 / 耗材类型 / 已绑定实体数据）。
+
 GROUP_DATA_DESCRIPTION = SensorEntityDescription(
     key="group_entity_data",
     translation_key="group_entity_data",
@@ -184,13 +180,7 @@ class ReplaceStatusSensor(
 class GroupDataSensor(
     CoordinatorEntity[ConsumableTypeCoordinator], SensorEntity
 ):
-    """分组数据传感器：主状态 = 组内实时值最小值，属性暴露成员明细。
-
-    命名冲突规避：诊断实体（ReplaceStatusSensor）以「分组名」作实体名（_attr_name），
-    本传感器以「分组名 + 数据」作实体名（如「客厅数据」），两者子名不同、天然不撞名；
-    unique_id 前缀也不同（_grp_ vs _grpdata_）。名称由分组名动态拼接，零硬编码。
-    仅非自定义分组生成（自定义分组无绑定实体，无成员数据可暴露）。
-    """
+    """分组数据传感器：主状态 = 组内实时值最小值，属性暴露成员明细。"""
 
     _attr_has_entity_name = True
 

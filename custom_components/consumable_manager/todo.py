@@ -37,12 +37,7 @@ class ConsumableTodoListEntity(
 
     @property
     def todo_items(self) -> list[TodoItem]:
-        """待办列表（由协调器运行时数据转换）。
-
-        传 Home Assistant todo 平台标准定义的全部 6 个字段
-        (uid/summary/status/due/description/completed)；completed 表示
-        待办被标记完成的时间，由协调器在状态切换为 completed 时写入。
-        """
+        """待办列表（由协调器运行时数据转换）。"""
         return [
             TodoItem(
                 uid=item["uid"],
@@ -69,12 +64,7 @@ class ConsumableTodoListEntity(
         await self.coordinator.async_request_refresh()
 
     async def async_update_todo_item(self, item: TodoItem) -> None:
-        """更新待办；勾选「更换」待办即视为已更换。
-
-        HA 的 todo.update_item 服务允许部分字段更新（status / rename /
-        due_date / due_datetime / description 任一非空），未传字段在
-        TodoItem 中为 None；此处仅覆盖非 None 字段，避免误清空原值。
-        """
+        """更新待办；勾选「更换」待办即视为已更换。"""
         if item.uid is None:
             return
         old_status = self.coordinator.get_todo_status(item.uid)

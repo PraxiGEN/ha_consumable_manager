@@ -25,13 +25,6 @@ bind_entity:
         entity:
           domain: sensor
           integration: consumable_manager
-    group_id:
-      required: false
-      name: "{{ name }}"
-      description: "{{ description }}"
-      example: default
-      selector:
-        text: {}
 unbind_entity:
   name: "{{ name }}"
   description: "{{ description }}"
@@ -159,6 +152,7 @@ add_type:
         select:
           options:
             - lifetime_percent
+            - numeric
             - remaining_time
             - used_time
           translation_key: threshold_type
@@ -181,6 +175,7 @@ add_type:
         select:
           options:
             - "%"
+            - numeric
             - minutes
             - hours
             - days

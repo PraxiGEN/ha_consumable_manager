@@ -32,8 +32,6 @@ def user_library_path(hass: HomeAssistant) -> Path:
     return Path(hass.config.path(USER_LIBRARY_DIR, USER_LIBRARY_FILE))
 
 # 进程内合并库缓存：按构成文件的 (mtime_ns, size) 签名复用 Library 实例，
-# 文件未变动时不重解析。使协调器每次刷新都能廉价取到最新（内置+用户）库，
-# 手改 user_library.json / 内置库后无需重载条目即生效（与 query_bindings 同口径）。
 _library_cache: dict[str, tuple[tuple, Library]] = {}
 
 def _library_signature(builtin_root: Path, user_path: Path | None) -> tuple:
@@ -59,7 +57,6 @@ def _library_signature(builtin_root: Path, user_path: Path | None) -> tuple:
 @dataclass(frozen=True)
 class UserLibraryData:
     """解析并通过校验的用户库三段数据。"""
-
     types: tuple[TypeMeta, ...] = ()
     consumables: tuple[Consumable, ...] = ()
 
@@ -68,11 +65,7 @@ class UserLibraryData:
         return not (self.types or self.consumables)
 
 def read_user_library(path: Path, builtin: Library) -> UserLibraryData:
-    """读取并校验用户库（不含降级逻辑，校验失败抛 LibraryError）。
-
-    引用完整性以「内置库 + 用户库」合并后的口径校验：
-    用户耗材可引用内置类型。
-    """
+    """读取并校验用户库（不含降级逻辑，校验失败抛 LibraryError）。"""
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, dict):
         raise LibraryError(f"{path}: 应为 JSON 对象")
@@ -90,7 +83,7 @@ def read_user_library(path: Path, builtin: Library) -> UserLibraryData:
     if not isinstance(raw_consumables, list):
         raise LibraryError(f"{path}: consumables 应为数组")
 
-    # 1. 类型：用户类型可与内置类型同键（整条替换），条目字段全必填
+    # 类型：用户类型可与内置类型同键（整条替换），条目字段全必填
     user_types = tuple(
         parse_type(key, raw, path) for key, raw in raw_types.items()
     )
@@ -99,7 +92,7 @@ def read_user_library(path: Path, builtin: Library) -> UserLibraryData:
     }
     known_types.update({meta.key: meta for meta in user_types})
 
-    # 2. 耗材：id 与内置同值即整条替换；文件内 id 不得重复
+    # 耗材：id 与内置同值即整条替换；文件内 id 不得重复
     user_consumables: list[Consumable] = []
     seen_ids: set[str] = set()
     for raw in raw_consumables:
@@ -115,11 +108,7 @@ def read_user_library(path: Path, builtin: Library) -> UserLibraryData:
     )
 
 def merge_library(builtin: Library, user: UserLibraryData) -> Library:
-    """合并内置库与用户库：同锚点用户优先、整条替换、不删除。
-
-    纯装配逻辑（不抛错）：输入应已通过 read_user_library 校验。
-    合并结果保持内置条目顺序，用户覆盖原位替换、新增条目追加。
-    """
+    """合并内置库与用户库：同锚点用户优先、整条替换、不删除。"""
     # 类型：同键整条替换
     types: dict[str, TypeMeta] = {
         meta.key: meta for meta in builtin.type_metas
@@ -141,14 +130,7 @@ def load_merged_library(
     base_dir: Path | None = None,
     user_path: Path | None = None,
 ) -> Library:
-    """加载内置库并合并用户库（同步，供 executor 调用）。
-
-    用户库文件缺失 → 直接返回内置库；
-    用户库坏文件 → 整体忽略 + 警告日志，回退内置库（绝不因用户手改出错而拖垮集成）。
-
-    按文件改动时间戳缓存：构成库的全部文件 (mtime_ns, size) 未变时复用同一
-    Library 实例，避免协调器每次刷新都重解析 JSON。
-    """
+    """加载内置库并合并用户库（同步，供 executor 调用）。"""
     builtin_root = Path(base_dir) if base_dir is not None else _LIBRARY_DIR
     sig = _library_signature(builtin_root, user_path)
     cache_key = str(user_path)
@@ -173,11 +155,7 @@ def load_merged_library(
     return library
 
 async def async_load_library(hass: HomeAssistant) -> Library:
-    """异步入口：executor 中加载内置库 + 用户库合并结果。
-
-    全集成统一的库加载入口（__init__ / config_flow / services / sensor），
-    消费方一律经由本函数取库，不再直接读内置库。
-    """
+    """异步入口：executor 中加载内置库 + 用户库合并结果。"""
     user_path = user_library_path(hass)
     return await hass.async_add_executor_job(
         load_merged_library, None, user_path
