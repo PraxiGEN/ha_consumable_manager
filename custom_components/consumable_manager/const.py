@@ -77,10 +77,21 @@ TIME_UNIT_TO_HOURS: Final[dict[str, float]] = {
 
 # 实体 unit_of_measurement 字符串 → 小时 换算系数（解析实体 UOM）
 TIME_UOM_TO_HOURS: Final[dict[str, float]] = {
-    "h": 1.0, "hour": 1.0, "hours": 1.0,
-    "min": 1 / 60, "minute": 1 / 60, "minutes": 1 / 60,
-    "s": 1 / 3600, "second": 1 / 3600, "seconds": 1 / 3600,
+    # 小时
+    "h": 1.0, "hr": 1.0, "hrs": 1.0, "hour": 1.0, "hours": 1.0,
+    "小时": 1.0, "时": 1.0,
+    # 分钟
+    "min": 1 / 60, "mins": 1 / 60, "minute": 1 / 60, "minutes": 1 / 60,
+    "分钟": 1 / 60,
+    # 秒
+    "s": 1 / 3600, "sec": 1 / 3600, "second": 1 / 3600, "seconds": 1 / 3600,
+    "秒": 1 / 3600,
+    # 天
     "d": 24.0, "day": 24.0, "days": 24.0,
+    "天": 24.0, "日": 24.0,
+    # 周
+    "w": 168.0, "wk": 168.0, "week": 168.0, "weeks": 168.0,
+    "周": 168.0, "週": 168.0,
 }
 
 # 阈值默认兜底（自定义类型不在库中时使用）

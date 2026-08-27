@@ -27,7 +27,6 @@ from .coordinator import (
     REPLACE_STATES,
     STATE_LOW_STOCK,
     STATE_OK,
-    STATE_REPLACE_NEEDED,
     STOCK_STATES,
     ConsumableTypeCoordinator,
     StockCoordinator,
@@ -39,7 +38,6 @@ _ICON_SHORTAGE = "mdi:package-variant-closed-remove"
 _ICON_BY_STATE: dict[str, str] = {
     STATE_OK: "mdi:check-circle-outline",
     STATE_LOW_STOCK: "mdi:archive-alert-outline",
-    STATE_REPLACE_NEEDED: "mdi:alert-decagram-outline",
 }
 
 # ---- 静态实体描述符 ----
