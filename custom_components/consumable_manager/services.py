@@ -10,8 +10,6 @@ from homeassistant.core import (
     ServiceCall,
 )
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import area_registry as ar
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import SupportsResponse
 
@@ -32,8 +30,6 @@ from .library import ID_PATTERN, Consumable, Library, LibraryError
 from .user_library import (
     async_load_library,
     async_write_user_consumable,
-    async_write_user_device,
-    async_write_user_device_consumable,
     async_write_user_type,
     user_library_path,
 )
@@ -85,42 +81,46 @@ def _coerce_item_id( hass: HomeAssistant, raw: str | None ) -> str | None:
         return str(reg_entry.unique_id).split("_", 1)[1]
     return raw
 
+def _resolve_group_id(
+    hass: HomeAssistant, value: str | None
+) -> str | None:
+    """分组选择框的值规整为 group_id。"""
+    if not value:
+        return None
+    if "." not in value:
+        return value
+    reg = er.async_get(hass)
+    reg_entry = reg.async_get(value)
+    if reg_entry is None or not reg_entry.unique_id:
+        return None
+    uid = reg_entry.unique_id
+    for coord in _type_coordinators(hass):
+        eid = coord.entry.entry_id
+        for g in coord.groups:
+            gid = g.get(CONF_GROUP_ID)
+            if gid is None:
+                continue
+            if uid in (f"{eid}_grp_{gid}", f"{eid}_grpdata_{gid}"):
+                return gid
+    return None
+
 # ---- 服务：实体耗材绑定 ----
 async def _resolve_consumable(
     hass: HomeAssistant,
     library: Library,
-    entity_id: str,
     consumable_id: str | None,
 ) -> tuple[Consumable, str]:
-    """解析目标耗材：手动指定优先，否则按实体设备自动匹配。"""
-    if consumable_id:
-        consumable = library.get(consumable_id)
-        if consumable is None:
-            raise ServiceValidationError(
-                f"耗材库中不存在耗材 {consumable_id}"
-            )
-        return consumable, "manual"
-
-    ent_reg = er.async_get(hass)
-    reg_entry = ent_reg.async_get(entity_id)
-    device = None
-    if reg_entry is not None and getattr(reg_entry, "device_id", None):
-        dev_reg = dr.async_get(hass)
-        device = dev_reg.async_get(reg_entry.device_id)
-    manufacturer = getattr(device, "manufacturer", None) if device else None
-    model = getattr(device, "model", None) if device else None
-    matches = library.find_compatible(manufacturer, model)
-    if not matches:
+    """解析目标耗材：必须显式指定 consumable_id（或在调用前由关联库存项继承）。"""
+    if not consumable_id:
         raise ServiceValidationError(
-            "未找到与该设备匹配的耗材，请手动指定 consumable_id"
+            "未指定 consumable_id，请在绑定时显式选择耗材或关联一个库存项"
         )
-    if len(matches) > 1:
-        language = hass.config.language
-        names = "、".join(c.display_name(language) for c in matches)
+    consumable = library.get(consumable_id)
+    if consumable is None:
         raise ServiceValidationError(
-            f"匹配到多个耗材（{names}），请手动指定 consumable_id"
+            f"耗材库中不存在耗材 {consumable_id}"
         )
-    return matches[0], "auto"
+    return consumable, "manual"
 
 def _link_stock_item(hass: HomeAssistant,
     item_id: str,
@@ -146,11 +146,10 @@ def _link_stock_item(hass: HomeAssistant,
     hass.config_entries.async_update_entry(stock.entry, options=options)
 
 async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
-    """绑定实体到耗材（自动匹配或手动指定），可选关联库存项，可选沉淀设备映射入库。"""
+    """绑定实体到耗材（显式指定 consumable_id 或继承关联库存项），可选关联库存项。"""
     entity_id = call.data.get("entity_id")
     consumable_id = call.data.get("consumable_id")
     item_id = _coerce_item_id(hass, call.data.get("item"))
-    record_device = bool(call.data.get("record_device"))
     if not entity_id:
         raise ServiceValidationError("缺少 entity_id")
     # 未手输耗材但选择了关联库存项 → 继承库存项已关联的 consumable_id
@@ -168,7 +167,7 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
                 inherited = True
     library = await async_load_library(hass)
     consumable, matched_by = await _resolve_consumable(
-        hass, library, entity_id, consumable_id
+        hass, library, consumable_id
     )
     if inherited:
         matched_by = "stock"
@@ -220,27 +219,6 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
     if item_id:
         _link_stock_item(hass, item_id, consumable)
 
-    # 可选：把「厂商+型号→耗材」合并追加进用户库设备映射（不覆盖既有）
-    device_recorded = False
-    if record_device:
-        device = None
-        ent_reg = er.async_get(hass)
-        reg_entry = ent_reg.async_get(entity_id)
-        if reg_entry and getattr(reg_entry, "device_id", None):
-            dev_reg = dr.async_get(hass)
-            device = dev_reg.async_get(reg_entry.device_id)
-        manufacturer = getattr(device, "manufacturer", None) if device else None
-        model = getattr(device, "model", None) if device else None
-        if manufacturer and model:
-            try:
-                await async_write_user_device_consumable(
-                    hass, manufacturer, model, consumable.id,
-                    getattr(device, "name", None),
-                )
-                device_recorded = True
-            except LibraryError:
-                device_recorded = False
-
     return {
         "entity_id": entity_id,
         "consumable_id": consumable.id,
@@ -248,65 +226,16 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
         "entry_type": coord.cons_type,
         "matched_by": matched_by,
         "item_id": item_id,
-        "record_device": record_device,
-        "device_recorded": device_recorded,
     }
 
-def _resolve_entity_info(
+async def _collect_bindings(
     hass: HomeAssistant,
-    entity_id: str,
-) -> dict[str, Any]:
-    """从实体/设备/区域注册表解析实体所属设备信息，供「绑定前查询」使用。
-
-    实体未注册、未挂设备、或设备无厂商/型号时，对应字段为 None，
-    不报错（这类实体仍可纯绑定，只是自动匹配用不上）。
-    """
-    info: dict[str, Any] = {
-        "entity_id": entity_id,
-        "device_id": None,
-        "manufacturer": None,
-        "model": None,
-        "device_name": None,
-        "area_id": None,
-        "area_name": None,
-    }
-    ent_reg = er.async_get(hass)
-    reg_entry = ent_reg.async_get(entity_id)
-    if reg_entry is None:
-        return info
-    device_id = getattr(reg_entry, "device_id", None)
-    if not device_id:
-        return info
-    info["device_id"] = device_id
-    dev_reg = dr.async_get(hass)
-    device = dev_reg.async_get(device_id)
-    if device is None:
-        return info
-    info["manufacturer"] = getattr(device, "manufacturer", None)
-    info["model"] = getattr(device, "model", None)
-    info["device_name"] = getattr(device, "name", None)
-    area_id = getattr(device, "area_id", None)
-    if area_id:
-        info["area_id"] = area_id
-        area_reg = ar.async_get(hass)
-        area = area_reg.async_get_area(area_id)
-        if area is not None:
-            info["area_name"] = getattr(area, "name", None)
-    return info
-
-async def async_query_binding(hass: HomeAssistant,
-    call: ServiceCall,
-) -> dict[str, Any]:
-    """查询绑定关系：按实体 / 耗材 / 库存项过滤。
-
-    传入 entity_id 时，额外返回该实体的设备信息（entity_info）与按厂商+
-    型号从库里推荐的耗材（suggested），便于「先查设备、再绑定」。
-    """
-    entity_id = call.data.get("entity_id")
-    consumable_id = call.data.get("consumable_id")
-    item_id = _coerce_item_id(hass, call.data.get("item"))
-    library = await async_load_library(hass)
-
+    library: Library,
+    entity_id: str | None = None,
+    consumable_id: str | None = None,
+    item_id: str | None = None,
+) -> list[dict[str, Any]]:
+    """收集实体↔耗材绑定映射（按实体 / 耗材 / 库存项过滤）。"""
     filter_type: str | None = None
     if consumable_id:
         consumable = library.get(consumable_id)
@@ -350,45 +279,34 @@ async def async_query_binding(hass: HomeAssistant,
                     "consumable_id": cid,
                     "consumable_model": cmodel,
                     "consumable_name": cname,
-                    "device_name": snapshot.get("device_name"),
-                    "device_model": snapshot.get("device_model"),
-                    "manufacturer": snapshot.get("manufacturer"),
                     "triggered": sid in triggered,
                 }
             )
+    return bindings
 
-    result: dict[str, Any] = {"bindings": bindings}
-    # 绑定前查询：返回实体设备信息 + 库内推荐耗材，形成「查→绑」闭环
-    if entity_id:
-        entity_info = _resolve_entity_info(hass, entity_id)
-        result["entity_info"] = entity_info
-        suggested: list[dict[str, Any]] = []
-        manufacturer = entity_info.get("manufacturer")
-        model = entity_info.get("model")
-        if model:
-            for consumable in library.find_compatible(manufacturer, model):
-                suggested.append(
-                    {
-                        "id": consumable.id,
-                        "type": consumable.cons_type,
-                        "model": consumable.model,
-                        "name": consumable.display_name(
-                            hass.config.language
-                        ),
-                    }
-                )
-        result["suggested"] = suggested
-    return result
+async def async_query_binding(hass: HomeAssistant,
+    call: ServiceCall,
+) -> dict[str, Any]:
+    """查询绑定关系：按实体 / 耗材 / 库存项过滤。"""
+    entity_id = call.data.get("entity_id")
+    consumable_id = call.data.get("consumable_id")
+    item_id = _coerce_item_id(hass, call.data.get("item"))
+    library = await async_load_library(hass)
+    bindings = await _collect_bindings(
+        hass, library, entity_id, consumable_id, item_id
+    )
+    return {"bindings": bindings}
 
 async def async_unbind_entity(hass: HomeAssistant,
     call: ServiceCall,
 ) -> dict[str, Any]:
-    """解除实体到耗材的绑定（误绑时移除）。"""
+    """解除实体绑定的耗材：只清除 实体→consumable_id 这条映射，实体仍留分组。"""
     entity_id = call.data.get("entity_id")
     if not entity_id:
         raise ServiceValidationError("缺少 entity_id")
 
     removed: list[dict[str, Any]] = []
+    did_unbind = False
     for coord in _type_coordinators(hass):
         groups = copy.deepcopy(coord.groups)
         if not any(
@@ -397,41 +315,34 @@ async def async_unbind_entity(hass: HomeAssistant,
             for s in g.get(CONF_SOURCE_ENTITIES, [])
         ):
             continue
-        # 记录被摘除条目绑定的耗材（用于回执），从含该实体的分组中过滤掉
-        bound_cid = None
+        # 清空调该实体快照的 consumable_id（移除 实体→耗材 映射）；
+        # 实体快照本身保留，分组不缩水、也不丢弃空分组。
+        unbound_cid = None
         for g in groups:
-            snaps = g.get(CONF_SOURCE_ENTITIES, [])
-            for s in snaps:
-                if s.get("entity_id") == entity_id:
-                    bound_cid = s.get("consumable_id")
-            g[CONF_SOURCE_ENTITIES] = [
-                s for s in snaps if s.get("entity_id") != entity_id
-            ]
-        # 空分组直接丢弃（避免遗留无实体的诊断实体）
-        groups = [g for g in groups if g.get(CONF_SOURCE_ENTITIES)]
+            for s in g.get(CONF_SOURCE_ENTITIES, []):
+                if s.get("entity_id") == entity_id and s.get(CONF_CONSUMABLE_ID):
+                    unbound_cid = s[CONF_CONSUMABLE_ID]
+                    s[CONF_CONSUMABLE_ID] = None
+                    did_unbind = True
         options = dict(coord.options)
-        if groups:
-            options[CONF_BINDING_GROUPS] = groups
-            options.pop(CONF_SOURCE_ENTITIES, None)
-        else:
-            options.pop(CONF_BINDING_GROUPS, None)
-            options.pop(CONF_SOURCE_ENTITIES, None)
+        options[CONF_BINDING_GROUPS] = groups
+        options.pop(CONF_SOURCE_ENTITIES, None)
         hass.config_entries.async_update_entry(coord.entry, options=options)
         await coord.async_request_refresh()
         removed.append(
             {
                 "entry_type": coord.cons_type,
-                "consumable_id": bound_cid,
+                "consumable_id": unbound_cid,
             }
         )
-    if not removed:
+    if not did_unbind:
         raise ServiceValidationError(
-            f"未找到实体 {entity_id} 的绑定关系"
+            f"未找到实体 {entity_id} 的耗材绑定关系"
         )
     return {
         "entity_id": entity_id,
-        "removed_from": removed,
-        "removed_count": len(removed),
+        "unbound_from": removed,
+        "unbound_count": len(removed),
     }
 
 # ---- 服务：添加耗材 / 设备映射（写入用户库，本地覆盖层） ----
@@ -498,29 +409,6 @@ async def async_add_consumable(hass: HomeAssistant,
         "path": str(user_library_path(hass)),
     }
 
-async def async_add_device( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
-    """添加设备-耗材映射到用户库（锚点重叠整条替换，引用完整性校验）。"""
-    manufacturer = str(call.data.get("manufacturer") or "").strip()
-    models = _to_str_list(call.data.get("models"))
-    name = str(call.data.get("name") or "").strip()
-    consumables = _to_str_list(call.data.get("consumables"))
-    if not manufacturer:
-        raise ServiceValidationError("缺少必填字段 manufacturer")
-    if not models:
-        raise ServiceValidationError("缺少必填字段 models（非空数组）")
-    if not name:
-        raise ServiceValidationError("缺少必填字段 name")
-    if not consumables:
-        raise ServiceValidationError("缺少必填字段 consumables（非空数组）")
-    try:
-        entry = await async_write_user_device(
-            hass, manufacturer, models, name, consumables
-        )
-    except LibraryError as err:
-        raise ServiceValidationError(str(err)) from err
-    await _refresh_coordinator_libraries(hass)
-    return {"added": entry, "path": str(user_library_path(hass))}
-
 async def async_add_type( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
     """添加自定义类型到用户库（新建语义，禁止覆盖；meta 需通过 parse_type 校验）。"""
     key = str(call.data.get("type_key") or "").strip().lower()
@@ -570,19 +458,61 @@ async def async_add_type( hass: HomeAssistant, call: ServiceCall ) -> dict[str, 
     await _refresh_coordinator_libraries(hass)
     return {"type_key": key, "added": meta, "path": str(user_library_path(hass))}
 
-# ---- 服务：数据提取 ----
-async def async_extract( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
-    """提取条目的结构化数据（include 可指定数据项，缺省全部）。"""
-    include = call.data.get("include") or ["stock", "consumable_types"]
-    result: dict[str, Any] = {}
+# ---- 服务：查询数据（统一数据出口，必须指定 data_type）----
+_DATA_TYPES = (
+    "stock",        # 库存条目
+    "type_entry",   # 耗材类型条目
+    "group_data",   # 分组实体数据（成员含 consumable 字段）
+    "types",        # 耗材类型元数据
+    "consumables",  # 全部耗材
+)
+
+async def async_query_data(hass: HomeAssistant,
+    call: ServiceCall,
+) -> dict[str, Any]:
+    """查询本集成的各类数据（必须指定 data_type，按数据类型支持不同过滤）。"""
+    data_type = call.data.get("data_type")
+    if not data_type:
+        raise ServiceValidationError(
+            "必须指定 data_type（数据种类），可选：" + ", ".join(_DATA_TYPES)
+        )
+    if data_type not in _DATA_TYPES:
+        raise ServiceValidationError(
+            f"未知 data_type {data_type!r}，支持：" + ", ".join(_DATA_TYPES)
+        )
+    library = await async_load_library(hass)
+    locale = hass.config.language
+    consumable_type = call.data.get("consumable_type")
+    entry_id = call.data.get("entry_id")
+    group_id = _resolve_group_id(hass, call.data.get("group_entity"))
+    triggered_only = bool(call.data.get("triggered_only"))
+
+    if data_type == "stock":
+        return {"stock": _query_stock(hass)}
+    if data_type == "type_entry":
+        return {"type_entries": _query_type_entries(hass)}
+    if data_type == "group_data":
+        return {"group_data": _query_group_data(
+            hass, entry_id=entry_id, consumable_type=consumable_type,
+            group_id=group_id, triggered_only=triggered_only)}
+    if data_type == "types":
+        return {"types": _query_types(library, locale)}
+    if data_type == "consumables":
+        return {"consumables": _query_consumables(
+            library, locale, consumable_type=consumable_type)}
+    return {}
+
+def _query_stock(hass: HomeAssistant) -> list[dict[str, Any]]:
+    """库存条目数据：逐个库存协调器，输出库存项 + 低库存状态。"""
+    result: list[dict[str, Any]] = []
     for entry in hass.config_entries.async_entries(DOMAIN):
-        # getattr 防御：加载过程中部分条目尚未写入 runtime_data
         data = getattr(entry, "runtime_data", None)
         if not isinstance(data, ConsumableManagerData):
             continue
         coord = data.coordinator
-        if isinstance(coord, StockCoordinator) and "stock" in include:
-            result["stock"] = {
+        if isinstance(coord, StockCoordinator):
+            result.append({
+                "entry_id": entry.entry_id,
                 "entry_type": ENTRY_TYPE_STOCK,
                 "status": coord.stock_status,
                 "items": [
@@ -600,28 +530,120 @@ async def async_extract( hass: HomeAssistant, call: ServiceCall ) -> dict[str, A
                     }
                     for item in coord.items
                 ],
-            }
-        elif (
-            isinstance(coord, ConsumableTypeCoordinator)
-            and "consumable_types" in include
-        ):
-            result.setdefault("consumable_types", []).append(
-                {
-                    "consumable_type": coord.cons_type,
-                    "title": coord.title,
-                    "source_entities": coord.source_entities,
-                    "triggered_entities": coord.triggered_entities(),
-                    "threshold": {
-                        "type": coord.threshold_type,
-                        "value": coord.threshold,
-                        "unit": coord.threshold_unit,
-                        "operator": coord.threshold_operator,
-                    },
-                    "replace_status": coord.replace_status,
-                    "last_replaced": coord.last_replaced,
-                }
-            )
+            })
     return result
+
+def _query_type_entries(
+    hass: HomeAssistant, entry_id: str | None = None
+) -> list[dict[str, Any]]:
+    """耗材类型条目数据：阈值 / 触发实体 / 分组等。"""
+    result: list[dict[str, Any]] = []
+    for coord in _type_coordinators(hass):
+        if entry_id and coord.entry.entry_id != entry_id:
+            continue
+        result.append({
+            "entry_id": coord.entry.entry_id,
+            "consumable_type": coord.cons_type,
+            "title": coord.title,
+            "source_entities": coord.source_entities,
+            "triggered_entities": coord.triggered_entities(),
+            "threshold": {
+                "type": coord.threshold_type,
+                "value": coord.threshold,
+                "unit": coord.threshold_unit,
+                "operator": coord.threshold_operator,
+            },
+            "replace_status": coord.replace_status,
+            "last_replaced": coord.last_replaced,
+            "groups": [
+                {
+                    "group_id": g.get(CONF_GROUP_ID),
+                    "group_name": g.get(CONF_GROUP_NAME),
+                }
+                for g in coord.groups
+            ],
+        })
+    return result
+
+def _query_group_data(
+    hass: HomeAssistant,
+    entry_id: str | None = None,
+    consumable_type: str | None = None,
+    group_id: str | None = None,
+    triggered_only: bool = False,
+) -> list[dict[str, Any]]:
+    """分组实体数据：每非自定义分组输出成员明细（含已绑定耗材名称）。"""
+    result: list[dict[str, Any]] = []
+    for coord in _type_coordinators(hass):
+        if entry_id and coord.entry.entry_id != entry_id:
+            continue
+        if consumable_type and coord.cons_type != consumable_type:
+            continue
+        for group in coord.groups:
+            if coord._group_is_custom(group):
+                continue
+            if group_id and group.get(CONF_GROUP_ID) != group_id:
+                continue
+            md = coord.group_member_data(group)
+            # triggered_only：仅保留存在已触发成员的分组
+            if triggered_only and not md.get("triggered_entities"):
+                continue
+            result.append({
+                "entry_id": coord.entry.entry_id,
+                "entry_type": coord.cons_type,
+                "entry_title": coord.title,
+                "group_id": group.get(CONF_GROUP_ID),
+                "group": md.get("group"),
+                "min_value": coord.group_min_value(group),
+                "consumable_type": md.get("consumable_type"),
+                "threshold_type": md.get("threshold_type"),
+                "threshold": md.get("threshold"),
+                "threshold_unit": md.get("threshold_unit"),
+                "threshold_operator": md.get("threshold_operator"),
+                "normal_entities": md.get("normal_entities"),
+                "triggered_entities": md.get("triggered_entities"),
+                "last_replaced": md.get("last_replaced"),
+            })
+    return result
+
+def _query_types(
+    library: Library, locale: str | None
+) -> list[dict[str, Any]]:
+    """耗材类型元数据列表。"""
+    result: list[dict[str, Any]] = []
+    for key in library.types:
+        meta = library.type_meta(key)
+        if meta is None:
+            continue
+        result.append({
+            "type_key": key,
+            "name": meta.display_name(locale),
+            "icon": meta.icon,
+            "default_threshold_type": meta.default_threshold_type,
+            "default_threshold": meta.default_threshold,
+            "default_threshold_unit": meta.default_threshold_unit,
+        })
+    return result
+
+def _query_consumables(
+    library: Library, locale: str | None,
+    consumable_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """全部耗材列表（含 id / 类型 / 型号 / 名称 / 单位 / meta）。"""
+    consumables = library.consumables
+    if consumable_type:
+        consumables = [c for c in consumables if c.cons_type == consumable_type]
+    return [
+        {
+            "consumable_id": c.id,
+            "type": c.cons_type,
+            "model": c.model,
+            "name": c.display_name(locale),
+            "unit": c.unit,
+            "meta": c.meta,
+        }
+        for c in consumables
+    ]
 
 # ---- 服务：库存调整 / 标记更换 ----
 async def _adjust_stock(hass: HomeAssistant,
@@ -655,9 +677,8 @@ _SERVICES: tuple[tuple[str, Any, SupportsResponse], ...] = (
     ("unbind_entity", async_unbind_entity, SupportsResponse.OPTIONAL),
     ("query_binding", async_query_binding, SupportsResponse.OPTIONAL),
     ("add_consumable", async_add_consumable, SupportsResponse.OPTIONAL),
-    ("add_device", async_add_device, SupportsResponse.OPTIONAL),
     ("add_type", async_add_type, SupportsResponse.OPTIONAL),
-    ("extract", async_extract, SupportsResponse.ONLY),
+    ("query_data", async_query_data, SupportsResponse.ONLY),
     ("adjust_stock", async_adjust_stock, SupportsResponse.OPTIONAL),
 )
 

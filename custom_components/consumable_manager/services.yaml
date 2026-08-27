@@ -32,13 +32,6 @@ bind_entity:
       example: default
       selector:
         text: {}
-    record_device:
-      required: false
-      name: "{{ name }}"
-      description: "{{ description }}"
-      selector:
-        boolean: {}
-
 unbind_entity:
   name: "{{ name }}"
   description: "{{ description }}"
@@ -132,39 +125,6 @@ add_consumable:
       selector:
         object: {}
 
-add_device:
-  name: "{{ name }}"
-  description: "{{ description }}"
-  fields:
-    manufacturer:
-      required: true
-      name: "{{ name }}"
-      description: "{{ description }}"
-      example: Xiaomi
-      selector:
-        text: {}
-    models:
-      required: true
-      name: "{{ name }}"
-      description: "{{ description }}"
-      example: '["zhimi.airpurifier.m4"]'
-      selector:
-        object: {}
-    name:
-      required: true
-      name: "{{ name }}"
-      description: "{{ description }}"
-      example: 米家空气净化器 4
-      selector:
-        text: {}
-    consumables:
-      required: true
-      name: "{{ name }}"
-      description: "{{ description }}"
-      example: '["filter_hepa13"]'
-      selector:
-        object: {}
-
 add_type:
   name: "{{ name }}"
   description: "{{ description }}"
@@ -226,22 +186,66 @@ add_type:
             - days
           translation_key: threshold_unit
 
-extract:
+query_data:
   name: "{{ name }}"
   description: "{{ description }}"
   fields:
-    include:
-      required: false
+    data_type:
+      required: true
       name: "{{ name }}"
       description: "{{ description }}"
+      example: stock
       selector:
         select:
           options:
             - stock
-            - consumable_types
-          multiple: true
-          mode: list
-          translation_key: service_include
+            - type_entry
+            - group_data
+            - types
+            - consumables
+          mode: dropdown
+          translation_key: service_data_type
+    consumable_type:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      example: filter
+      selector:
+        select:
+          mode: dropdown
+          custom_value: true
+          translation_key: entry_type
+          options:
+            - battery
+            - filter
+            - humidifier
+            - ink
+            - robot_vacuum
+            - water_purifier
+    entry_id:
+      # 条目选择框：用 config_entry 选择器列出本集成已添加的条目，用户无需知道条目 ID。
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        config_entry:
+          integration: consumable_manager
+    group_entity:
+      # 分组选择框：用实体选择器列出本集成的分组传感器（诊断实体 / 分组数据实体），
+      # 用户选中“某个分组对应的实体”即可，服务内部经实体注册表反查 unique_id 得到真实 group_id。
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        entity:
+          integration: consumable_manager
+          domain: sensor
+    triggered_only:
+      required: false
+      name: "{{ name }}"
+      description: "{{ description }}"
+      selector:
+        boolean: {}
 
 adjust_stock:
   name: "{{ name }}"

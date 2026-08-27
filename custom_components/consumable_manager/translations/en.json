@@ -115,10 +115,13 @@
         "consume": "Consume"
       }
     },
-    "service_include": {
+    "service_data_type": {
       "options": {
-        "stock": "Stock",
-        "consumable_types": "Consumable type entries"
+        "stock": "Stock entries",
+        "type_entry": "Consumable type entries",
+        "group_data": "Group entity data",
+        "types": "Consumable types",
+        "consumables": "Consumables"
       }
     }
   },
@@ -347,6 +350,27 @@
           }
         }
       },
+      "group_entity_data": {
+        "name": "Group entity data",
+        "state_attributes": {
+          "group": {
+            "name": "Group"
+          },
+          "consumable_type": {
+            "name": "Consumable type",
+            "state": {
+              "battery": "Wireless device (battery)",
+              "filter": "Purification device filter",
+              "ink": "Printer consumable",
+              "robot_vacuum": "Robot vacuum consumable",
+              "water_purifier": "Water purifier consumable"
+            }
+          },
+          "bound_entity_data": {
+            "name": "Bound entity data"
+          }
+        }
+      },
       "stock_item": {
         "state_attributes": {
           "item_id": {
@@ -402,7 +426,7 @@
   "services": {
     "bind_entity": {
       "name": "Bind entity to consumable",
-      "description": "Bind a device consumable entity to a template-library consumable (auto-match or manual consumable_id), writing it into the matching type entry; optionally link a stock item.",
+      "description": "将设备耗材实体绑定到耗材库中的耗材（显式指定 consumable_id 或关联库存项继承），写入对应类型条目的绑定列表；可选关联一个库存项。",
       "fields": {
         "entity_id": {
           "name": "Entity",
@@ -410,7 +434,7 @@
         },
         "consumable_id": {
           "name": "Consumable ID",
-          "description": "Consumable to bind; leave empty to auto-match by device"
+          "description": "要绑定的耗材（必填：显式指定或经关联库存项继承）"
         },
         "item": {
           "name": "Linked stock item",
@@ -419,10 +443,6 @@
         "group_id": {
           "name": "Target group",
           "description": "Target binding group ID to write into; leave empty for the default group (auto-created if none)"
-        },
-        "record_device": {
-          "name": "Record device mapping",
-          "description": "Also save the device-to-consumable mapping into the user library (merge, not overwrite)"
         }
       }
     },
@@ -438,7 +458,7 @@
     },
     "query_binding": {
       "name": "Query bindings",
-      "description": "Query binding relations (filter by entity, consumable or stock item). When an entity_id is given, also returns the entity's device info (entity_info) and suggested consumables from the library (suggested) for binding.",
+      "description": "Query the binding relationships between entities and consumables (filter by entity, consumable, or stock item). Returns only the entity↔consumable mapping; does not query device-registry info (manufacturer / model / area).",
       "fields": {
         "entity_id": {
           "name": "Entity",
@@ -480,28 +500,6 @@
         }
       }
     },
-    "add_device": {
-      "name": "Add device mapping",
-      "description": "Add or overwrite a device-to-consumable mapping in the local user library (anchor: manufacturer + model; overlapping entries are replaced entirely; atomic write).",
-      "fields": {
-        "manufacturer": {
-          "name": "Manufacturer",
-          "description": "Device manufacturer"
-        },
-        "models": {
-          "name": "Model list",
-          "description": "Device model(s), JSON string array"
-        },
-        "name": {
-          "name": "Device name",
-          "description": "Device display name"
-        },
-        "consumables": {
-          "name": "Consumable ID list",
-          "description": "Consumable IDs used by the device, JSON string array"
-        }
-      }
-    },
     "add_type": {
       "name": "Add custom type",
       "description": "Add a custom consumable type to the local user library (config/.consumable_manager/user_library.json, atomic write). The type key allows only lowercase letters, digits and underscores and must not duplicate an existing type (new-only semantics); threshold fields follow the built-in type schema.",
@@ -532,13 +530,29 @@
         }
       }
     },
-    "extract": {
-      "name": "Extract data",
-      "description": "Extract structured data of entries (selectable data items).",
+    "query_data": {
+      "name": "Query data",
+      "description": "Query any data of this integration; data_type is required. group_data can be refined by the filters below; other types return full data.",
       "fields": {
-        "include": {
-          "name": "Data items",
-          "description": "Data items to include (stock / consumable_types)"
+        "data_type": {
+          "name": "Data type",
+          "description": "stock stock entries / type_entry consumable type entries / group_data group entity data / types type metadata / consumables consumables"
+        },
+        "consumable_type": {
+          "name": "Consumable type",
+          "description": "Applies to group_data / consumables only: filter by consumable type (e.g. filter)"
+        },
+        "entry_id": {
+          "name": "Entry",
+          "description": "Applies to group_data only: pick the integration entry to query (dropdown of added entries)"
+        },
+        "group_entity": {
+          "name": "Group",
+          "description": "Applies to group_data only: pick the group to query (select its corresponding entity)"
+        },
+        "triggered_only": {
+          "name": "Triggered only",
+          "description": "Applies to group_data only: only return groups with triggered members"
         }
       }
     },
