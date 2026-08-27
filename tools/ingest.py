@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""耗材管理器 摄入工具（用户库 → 内置库，GitHub Actions 执行核心）。
+"""耗材管理器 摄入工具（贡献草稿 → 内置库，仅 CI 中运行，不在本地使用）。
 
-用法：--check 校验内置库；--ingest 摄入用户库（锚点去重裁决、多语言拆解
-进 names.json、排序归位、原子写）；--dry-run 只报告不写文件。
-规则：同锚点同内容跳过、不同内容人工裁决；单向用户库 → 内置库。
+只读取 git 分支中的 contributions/ 文件夹（contributions/<用户名>/
+user_library.json），不读取任何本地路径。
+用法：--check 校验内置库；--ingest 摄入全部草稿（锚点去重裁决、多语言
+拆解进 names.json、排序归位、原子写）；--dry-run 只报告不写文件。
+规则：同锚点同内容跳过、不同内容人工裁决；单向 草稿 → 内置库。
 """
 
 from __future__ import annotations
@@ -15,9 +17,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# 定位集成包目录，兼容两种布局：
-#   布局 1（仓库根，推荐）：<repo>/tools/ingest.py + <repo>/custom_components/consumable_manager/
-#   布局 2（本地开发）：<package>/tools/ingest.py + <package>/ 即集成目录
+# 定位集成包目录（工具仅在 CI 中运行，仓库根布局）：
+#   <repo>/tools/ingest.py
+#   <repo>/custom_components/consumable_manager/library/     内置库（写入目标）
+#   <repo>/contributions/<用户名>/user_library.json          分支中的贡献草稿
 _TOOLS_DIR = Path(__file__).resolve().parent
 
 
@@ -30,7 +33,8 @@ def _locate_package() -> Path:
 
 PACKAGE_ROOT = _locate_package()
 DEFAULT_LIBRARY = PACKAGE_ROOT / "library"
-DEFAULT_USER_LIB = PACKAGE_ROOT / "config" / ".consumable_manager" / "user_library.json"
+DEFAULT_CONTRIBUTIONS = _TOOLS_DIR.parent / "contributions"
+DRAFT_FILENAME = "user_library.json"
 
 # 优先走正常包导入（测试环境等已有 Home Assistant mock）；
 # 离线（CLI 直跑）时降级为 importlib 加载 library.py / const.py：
@@ -38,10 +42,8 @@ DEFAULT_USER_LIB = PACKAGE_ROOT / "config" / ".consumable_manager" / "user_libra
 try:  # noqa: E402
     from consumable_manager.library import (  # noqa: F401
         LibraryError,
-        device_name_key,
         load_library,
         parse_consumable,
-        parse_device,
     )
 except ImportError:
     import importlib.util
@@ -74,10 +76,8 @@ except ImportError:
 
     from consumable_manager.library import (  # noqa: E402,F811
         LibraryError,
-        device_name_key,
         load_library,
         parse_consumable,
-        parse_device,
     )
 
 
@@ -96,11 +96,10 @@ def _write_atomic(path: Path, data: Any) -> None:
 
 
 def load_raw_library(root: Path) -> dict[str, Any]:
-    """读内置库四个文件的原始 JSON（index / consumables / devices / names）。"""
+    """读内置库三个文件的原始 JSON（index / consumables / names）。"""
     return {
         "index": _read_json(root / "index.json"),
         "consumables": _read_json(root / "consumables.json"),
-        "devices": _read_json(root / "devices.json"),
         "names": _read_json(root / "names.json"),
     }
 
@@ -116,32 +115,12 @@ def sort_consumables(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return sorted(items, key=lambda item: (item.get("type", ""), item.get("id", "")))
 
 
-def sort_devices(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return sorted(
-        items,
-        key=lambda d: (
-            str(d.get("manufacturer", "")).lower(),
-            str((d.get("models") or [""])[0]).lower(),
-        ),
-    )
-
-
 def sort_names(names: dict[str, Any]) -> dict[str, Any]:
     return {section: dict(sorted(section_map.items())) if isinstance(section_map, dict) else section_map
             for section, section_map in names.items()}
 
 
 # ---- 锚点与内容比较 ----
-
-def _device_anchors_raw(entry: dict[str, Any]) -> frozenset[tuple[str, str]]:
-    """设备条目锚点集合：(manufacturer, model) 组合，忽略大小写。"""
-    manufacturer = str(entry.get("manufacturer", "")).strip().lower()
-    return frozenset(
-        (manufacturer, str(model).strip().lower())
-        for model in entry.get("models") or []
-        if str(model).strip()
-    )
-
 
 def _consumable_anchor(item: dict[str, Any]) -> tuple[str, str]:
     return (str(item.get("type", "")).lower(), str(item.get("model", "")).strip().lower())
@@ -178,15 +157,6 @@ def _type_content_same(a: dict[str, Any], b: dict[str, Any]) -> bool:
     )
 
 
-def _device_content_same(a: dict[str, Any], b: dict[str, Any]) -> bool:
-    """设备条目（锚点 = manufacturer + model 集合）内容是否一致。"""
-    return (
-        _plain_name(a.get("name")) == _plain_name(b.get("name"))
-        and (a.get("models") or []) == (b.get("models") or [])
-        and (a.get("consumables") or []) == (b.get("consumables") or [])
-    )
-
-
 # ---- 检查（--check，CI 用）----
 
 def check_library(root: Path) -> list[str]:
@@ -205,8 +175,6 @@ def check_library(root: Path) -> list[str]:
         problems.append("index.json types 未按键字母序（运行 --ingest 或人工整理）")
     if raw["consumables"] != sort_consumables(raw["consumables"]):
         problems.append("consumables.json 未按 type 分组 + id 字母序")
-    if raw["devices"] != sort_devices(raw["devices"]):
-        problems.append("devices.json 未按 manufacturer + model 字母序")
     names = raw["names"]
     if names != sort_names(names):
         problems.append("names.json 段内未按键字母序")
@@ -215,7 +183,6 @@ def check_library(root: Path) -> list[str]:
     names_by_section = {
         "types": set(names.get("types", {})),
         "consumables": set(names.get("consumables", {})),
-        "devices": set(names.get("devices", {})),
     }
     for key in index.get("types", {}):
         if key not in names_by_section["types"]:
@@ -223,12 +190,6 @@ def check_library(root: Path) -> list[str]:
     for item in raw["consumables"]:
         if item.get("id") not in names_by_section["consumables"]:
             problems.append(f"提示: 耗材 {item.get('id')} 缺少 names.consumables 多语言")
-    for dev in raw["devices"]:
-        key = device_name_key(dev.get("manufacturer", ""), (dev.get("models") or [""])[0])
-        if key not in names_by_section["devices"]:
-            problems.append(
-                f"提示: 设备 {dev.get('manufacturer')} {(dev.get('models') or [''])[0]} 缺少 names.devices 多语言"
-            )
     return problems
 
 
@@ -239,7 +200,7 @@ def ingest_user_library(
     user_lib_path: Path,
     dry_run: bool = False,
 ) -> dict[str, Any]:
-    """摄入用户库到内置库。返回报告（新增 / 跳过 / 需人工裁决）。"""
+    """摄入单份草稿（user_library.json）到内置库。返回报告（新增 / 跳过 / 需人工裁决）。"""
     report: dict[str, Any] = {"added": [], "skipped": [], "conflict": []}
 
     # 内置库原始数据（保留 index 的 schema_version 等无关键）
@@ -247,11 +208,9 @@ def ingest_user_library(
     index = raw["index"]
     builtin_types = dict(index.get("types", {}))
     builtin_consumables = list(raw["consumables"])
-    builtin_devices = list(raw["devices"])
     names = raw["names"]
     names_types = dict(names.get("types", {}))
     names_consumables = dict(names.get("consumables", {}))
-    names_devices = dict(names.get("devices", {}))
 
     user = _read_json(user_lib_path)
     if not isinstance(user, dict):
@@ -309,60 +268,18 @@ def ingest_user_library(
             }
             raw_item["name"] = _plain_name(raw_item["name"])
 
-    # 3. devices（锚点 = manufacturer + model 集合）
-    builtin_anchors: set[tuple[str, str]] = set()
-    for dev in builtin_devices:
-        builtin_anchors |= _device_anchors_raw(dev)
-    known_ids = {c.get("id") for c in builtin_consumables}
-    for raw_dev in user.get("devices") or []:
-        anchors = _device_anchors_raw(raw_dev)
-        if anchors & builtin_anchors:
-            if any(
-                _device_content_same(dev, raw_dev) and _device_anchors_raw(dev) == anchors
-                for dev in builtin_devices
-            ):
-                report["skipped"].append(
-                    f"device {raw_dev.get('manufacturer')} {(raw_dev.get('models') or [''])[0]}（同锚点同内容）"
-                )
-            else:
-                report["conflict"].append(
-                    f"device {raw_dev.get('manufacturer')} {(raw_dev.get('models') or [''])[0]}（同锚点不同内容，需人工裁决）"
-                )
-            continue
-        try:
-            parse_device(raw_dev, user_lib_path, known_ids)
-        except LibraryError as exc:
-            report["conflict"].append(
-                f"device {raw_dev.get('manufacturer')} 校验失败: {exc}"
-            )
-            continue
-        builtin_devices.append(raw_dev)
-        builtin_anchors |= anchors
-        report["added"].append(
-            f"device {raw_dev.get('manufacturer')} {(raw_dev.get('models') or [''])[0]}"
-        )
-        if isinstance(raw_dev.get("name"), dict):
-            names_devices[
-                device_name_key(
-                    raw_dev.get("manufacturer", ""), (raw_dev.get("models") or [""])[0]
-                )
-            ] = {k: v for k, v in raw_dev["name"].items() if v}
-            raw_dev["name"] = _plain_name(raw_dev["name"])
-
-    # 4. 排序归位 + 写回
+    # 3. 排序归位 + 写回
     index["types"] = sort_types(builtin_types)
     new_raw = {
         "index": index,
         "consumables": sort_consumables(builtin_consumables),
-        "devices": sort_devices(builtin_devices),
         "names": sort_names(
-            {"types": names_types, "consumables": names_consumables, "devices": names_devices}
+            {"types": names_types, "consumables": names_consumables}
         ),
     }
     if not dry_run:
         _write_atomic(root / "index.json", index)
         _write_atomic(root / "consumables.json", new_raw["consumables"])
-        _write_atomic(root / "devices.json", new_raw["devices"])
         _write_atomic(root / "names.json", new_raw["names"])
 
     # 摄入后自检（排序 / 完整性应无问题）
@@ -371,16 +288,55 @@ def ingest_user_library(
     return report
 
 
+def ingest_contributions(
+    root: Path,
+    contributions_dir: Path,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """摄入分支 contributions/ 文件夹下的全部草稿（每份 = contributions/<用户名>/user_library.json）。
+
+    只读取该文件夹，不涉及任何本地路径；文件夹缺失或无草稿时为空操作。
+    """
+    report: dict[str, Any] = {
+        "drafts": [], "added": [], "skipped": [], "conflict": [],
+    }
+    drafts = (
+        sorted(p for p in contributions_dir.glob(f"*/{DRAFT_FILENAME}") if p.is_file())
+        if contributions_dir.is_dir()
+        else []
+    )
+    for draft in drafts:
+        report["drafts"].append(str(draft))
+        sub = ingest_user_library(root, draft, dry_run=dry_run)
+        report["added"].extend(sub["added"])
+        report["skipped"].extend(sub["skipped"])
+        report["conflict"].extend(sub["conflict"])
+    if drafts and not dry_run:
+        problems = check_library(root)
+        report["post_check"] = [p for p in problems if not p.startswith("提示:")]
+    else:
+        report["post_check"] = []
+    return report
+
+
 # ---- CLI ----
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="用户库 → 内置库 摄入 / 检查工具")
+    parser = argparse.ArgumentParser(
+        description="贡献草稿 → 内置库 摄入 / 检查工具（仅 CI 使用）"
+    )
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--check", action="store_true", help="只校验内置库（不写文件）")
-    group.add_argument("--ingest", action="store_true", help="执行摄入（默认）")
+    group.add_argument(
+        "--ingest", action="store_true",
+        help="摄入 contributions/ 文件夹下全部草稿（默认）",
+    )
     parser.add_argument("--dry-run", action="store_true", help="只报告，不写文件")
     parser.add_argument("--library", type=Path, default=DEFAULT_LIBRARY)
-    parser.add_argument("--user-lib", type=Path, default=DEFAULT_USER_LIB)
+    parser.add_argument(
+        "--contributions", type=Path, default=DEFAULT_CONTRIBUTIONS,
+        help="贡献草稿目录（分支中的 contributions/ 文件夹）",
+    )
     parser.add_argument("--verbose", action="store_true")
     args = parser.parse_args()
 
@@ -396,13 +352,19 @@ def main() -> int:
         print("内置库检查通过（字段 / 引用 / 排序 / names 覆盖）。")
         return 0
 
-    user_path = args.user_lib.resolve()
-    if not user_path.is_file():
-        print(f"用户库不存在: {user_path}")
-        return 1
-    report = ingest_user_library(root, user_path, dry_run=args.dry_run)
+    contributions = args.contributions.resolve()
+    report = ingest_contributions(root, contributions, dry_run=args.dry_run)
+    if not report["drafts"]:
+        print(f"{contributions} 下没有草稿（*/{DRAFT_FILENAME}），无需摄入。")
+        return 0
 
-    print(f"摄入{'（dry-run，未写文件）' if args.dry_run else '完成'}：")
+    print(
+        f"摄入{'（dry-run，未写文件）' if args.dry_run else '完成'}"
+        f"（{len(report['drafts'])} 份草稿）："
+    )
+    if args.verbose:
+        for draft in report["drafts"]:
+            print(f"  * {draft}")
     for label, items in (("新增", report["added"]), ("跳过", report["skipped"])):
         if items:
             print(f"  {label} {len(items)} 项")
