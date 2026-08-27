@@ -5,7 +5,7 @@
 ## 中文
 
 本目录是 `consumable_manager` 集成的内置耗材库。内置库是**数据**，不是代码——
-社区通过 PR 贡献耗材 / 类型 / 设备映射，由 CI 自动组装进这里的 JSON 文件。
+社区通过 PR 贡献耗材 / 类型，由 CI 自动组装进这里的 JSON 文件。
 
 ### 仓库结构
 
@@ -48,14 +48,13 @@
 library/
   index.json            类型元数据表：schema_version + types（类型键 → 图标 / 阈值默认值）
   consumables.json      耗材扁平数组：定义「耗材是什么」（显式 type 字段）
-  devices.json          设备映射扁平数组：定义「设备用了啥」（models[] 数组合并同系列变体）
-  names.json            多语言映射表（可选附属文件）：types / consumables / devices 三段
+  names.json            多语言映射表（可选附属文件）：types / consumables 两段
 ```
 
 ### 铁律
 
 - **顺序无语义**：加载器对条目顺序零敏感，合并与查找只靠锚点
-  （类型 key / 耗材 id / manufacturer+models）。文件内排序只为便于阅读与
+  （类型 key / 耗材 id）。文件内排序只为便于阅读与
   git diff，由 CI 工具维持。
 - **全字段必填**：`meta` 可为空对象 `{}`；校验只查「有且合法」。
 - **单向回流**：`contributions/` 草稿 → 内置库，永不反向同步。
@@ -73,17 +72,13 @@ consumables.json 每条（六字段全必填）：
 | `unit` | 计量单位（个 / 节 / 粒 …） |
 | `meta` | 规格对象，可为 `{}` |
 
-devices.json 每条（四字段全必填）：`manufacturer` / `models[]`（非空字符串数组，
-同系列变体合并）/ `name`（英文 plain 兜底）/ `consumables[]`（引用的耗材 id，须已定义）。
-
 index.json：`schema_version`（=1）+ `types`（类型键 → `name` / `icon` /
 `default_threshold_type` / `default_threshold` / `default_threshold_unit`，全必填）。
 
 ### 多语言
 
 - 数据文件 `name` 一律**英文 plain**（可读兜底）；具体语言的显示名放 `names.json`。
-- `names.json` 三段，key 规则：`types` 用类型键；`consumables` 用耗材 id；
-  `devices` 用 `manufacturer_model`（规范化小写拼接，如 `xiaomi_zhimi_airpurifier_m3`）。
+- `names.json` 两段，key 规则：`types` 用类型键；`consumables` 用耗材 id。
 - 解析回退链：names 映射 → 数据内 name → model / 类型键，任何语言下都有显示。
 - 新增语言只需在 `names.json` 对应 key 上补一个语言键，无需改数据文件。
 
@@ -91,7 +86,6 @@ index.json：`schema_version`（=1）+ `types`（类型键 → `name` / `icon` /
 
 - `index.json` types：按 key 字母序。
 - `consumables.json`：按 type 分组 + 组内 id 字母序。
-- `devices.json`：按 manufacturer 再 model 字母序（忽略大小写）。
 - `names.json`：各段按 key 字母序。
 - 全部由 CI 中的 `tools/ingest.py --ingest` 在摄入时自动归位；
   `--check` 负责校验（字段 / 引用 / 排序 / names 覆盖）。
@@ -102,7 +96,7 @@ index.json：`schema_version`（=1）+ `types`（类型键 → `name` / `icon` /
 
 This directory holds the built-in consumable library of the `consumable_manager`
 integration. The library is **data, not code** — the community contributes
-consumables / types / device mappings via PR, and CI assembles them into these
+consumables / types via PR, and CI assembles them into these
 JSON files automatically.
 
 ### Repository layout
@@ -150,15 +144,14 @@ fields before submitting, and remove anything you don't want public.
 library/
   index.json            type metadata table: schema_version + types (type key → icon / default thresholds)
   consumables.json      flat array of consumables (what a consumable is, explicit `type`)
-  devices.json          flat array of device mappings (what a device uses, `models[]` merges variants)
-  names.json            multilingual mapping table (optional): sections `types` / `consumables` / `devices`
+  names.json            multilingual mapping table (optional): sections `types` / `consumables`
 ```
 
 ### Iron rules
 
 - **Order carries no meaning**: the loader is insensitive to entry order;
-  merging and lookup rely only on anchors (type key / consumable id /
-  manufacturer+models). In-file ordering exists for readability and git diffs,
+  merging and lookup rely only on anchors (type key / consumable id).
+  In-file ordering exists for readability and git diffs,
   and is maintained by CI tooling.
 - **All fields required**: `meta` may be an empty object `{}`; validation only
   checks "present and valid".
@@ -178,10 +171,6 @@ Each consumables.json entry (six required fields):
 | `unit` | unit of measure (pcs / cells / tablets …) |
 | `meta` | spec object, may be `{}` |
 
-Each devices.json entry (four required fields): `manufacturer` / `models[]`
-(non-empty string array, variants of one series merged) / `name` (English plain
-fallback) / `consumables[]` (referenced consumable ids, must be defined).
-
 index.json: `schema_version` (=1) + `types` (type key → `name` / `icon` /
 `default_threshold_type` / `default_threshold` / `default_threshold_unit`,
 all required).
@@ -190,9 +179,8 @@ all required).
 
 - Data-file `name` is always **English plain text** (readable fallback);
   per-locale names live in `names.json`.
-- `names.json` has three sections; key rules: `types` → type key;
-  `consumables` → consumable id; `devices` → `manufacturer_model`
-  (lowercased slug join, e.g. `xiaomi_zhimi_airpurifier_m3`).
+- `names.json` has two sections; key rules: `types` → type key;
+  `consumables` → consumable id.
 - Resolution fallback: names map → data-file name → model / type key
   (never empty).
 - Adding a language = adding one locale key in `names.json`; no data-file
@@ -202,7 +190,6 @@ all required).
 
 - `index.json` types: alphabetical by key.
 - `consumables.json`: grouped by type, then alphabetical by id within a group.
-- `devices.json`: alphabetical by manufacturer, then model (case-insensitive).
 - `names.json`: alphabetical by key within each section.
 - All of this is handled automatically by `tools/ingest.py --ingest` in CI;
   `--check` validates it (fields / references / ordering / names coverage).
