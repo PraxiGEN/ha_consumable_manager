@@ -214,7 +214,12 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
     options[CONF_BINDING_GROUPS] = groups
     options.pop(CONF_SOURCE_ENTITIES, None)
     hass.config_entries.async_update_entry(coord.entry, options=options)
-    await coord.async_request_refresh()
+    # 纯映射：写库即生效（HA 会因 options 变更重载条目），不再立即刷新。
+    # 把新实体并入触发基线（内存 + 持久化），使重载后的新协调器首轮刷新
+    # 差集为空 → 不发通知；越阈实体的「更换」待办由后续监控周期（重载/轮询）
+    # 经 step0 自然产生，而非绑定动作的副作用。绑定服务本身不刷新 → 不生成待办/通知。
+    coord.sync_alert_baseline()
+    coord._persist_alert_baseline(coord._compute_triggered())
 
     if item_id:
         _link_stock_item(hass, item_id, consumable)
@@ -328,7 +333,11 @@ async def async_unbind_entity(hass: HomeAssistant,
         options[CONF_BINDING_GROUPS] = groups
         options.pop(CONF_SOURCE_ENTITIES, None)
         hass.config_entries.async_update_entry(coord.entry, options=options)
-        await coord.async_request_refresh()
+        # 纯映射：解绑仅清除 实体→耗材 映射（实体仍留分组监控，触发态不变）。
+        # 并入基线（内存 + 持久化）防止重载误报通知；不立即刷新 → 解绑动作
+        # 本身不生成待办/通知。
+        coord.sync_alert_baseline()
+        coord._persist_alert_baseline(coord._compute_triggered())
         removed.append(
             {
                 "entry_type": coord.cons_type,

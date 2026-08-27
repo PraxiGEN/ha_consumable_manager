@@ -201,12 +201,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
 
     @property
     def entity_signature(self) -> tuple[str, ...]:
-        """本条目当前应生成的实体键集合。
-
-        默认无实体（通知条目直接用 BaseCoordinator）。
-        配置变更后由 update_listener 比对：集合变化则重载条目
-        （增删实体），仅数值变化则刷新（不重建实体）。
-        """
+        """本条目当前应生成的实体键集合。"""
         return ()
 
     @callback
@@ -218,11 +213,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
 
     @callback
     def async_subscribe(self) -> Callable[[], None] | None:
-        """建立运行时订阅（子类按需重写；库存/通知条目不订阅）。
-
-        返回取消订阅回调；由 async_setup_entry 通过 entry.async_on_unload
-        统一注册清理，避免分散的取消逻辑与潜在内存泄漏。
-        """
+        """建立运行时订阅（子类按需重写；库存/通知条目不订阅）。"""
         return None
 
     # ---- 待办事项（存 dict，todo.py 负责转 TodoItem）----
@@ -398,6 +389,10 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         options = dict(self._entry.options)
         options[CONF_LAST_TRIGGERED_SIG] = sig
         self._write_options(options)
+
+    def sync_alert_baseline(self) -> None:
+        """配置变更（绑定/解绑/编辑分组）后调用：把当前触发集合作为新基线。"""
+        self._prev_triggered = self._compute_triggered()
 
     async def _async_update_data(self) -> None:
         """单次刷新唯一执行路径。"""
