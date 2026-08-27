@@ -61,11 +61,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
 
     @property
     def type_icon(self) -> str:
-        """该耗材类型的图标（来自库类型元数据）；自定义 / 缺失时回退通用图标。
-
-        供分组传感器（ReplaceStatusSensor / GroupDataSensor）统一继承，
-        使同类型条目下所有实体视觉上归属同一耗材类别。
-        """
+        """该耗材类型的图标（来自库类型元数据）；自定义 / 缺失时回退通用图标。"""
         if self._type_meta is not None and self._type_meta.icon:
             return self._type_meta.icon
         if self._library is not None:
@@ -76,13 +72,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
 
     @property
     def entity_signature(self) -> tuple[str, ...]:
-        """按分组生成实体键（分组增删触发重载，重命名不触发漂移）。
-
-        每个非自定义分组生成两类实体键：
-        - replace_status：诊断实体（状态枚举）
-        - group_entity_data：分组数据传感器（组最小值 + 成员明细）
-        自定义分组无绑定实体，仅生成 replace_status（按已用时长判定）。
-        """
+        """按分组生成实体键"""
         groups = self.groups
         if not groups:
             return ()
@@ -95,15 +85,9 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             if not self._group_is_custom(g)
         )
 
-    # ---- 绑定分组（多分组 → 多诊断实体；旧扁平 source_entities 向后兼容）----
     @property
     def groups(self) -> list[dict[str, Any]]:
-        """本条目绑定分组列表（每个分组 = 一组源实体 + 可选阈值覆盖）。
-
-        旧条目仅存扁平 CONF_SOURCE_ENTITIES 时，合成单「默认」分组
-        （只读，不写回）；写操作一律经 config_flow / services 规范化到
-        CONF_BINDING_GROUPS 后再落盘。
-        """
+        """本条目绑定分组列表（每个分组 = 一组源实体 + 可选阈值覆盖）。"""
         stored = self._entry.options.get(CONF_BINDING_GROUPS)
         if stored:
             return [dict(g) for g in stored]
@@ -138,10 +122,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return result
 
     def _entity_snapshot(self, entity_id: str) -> dict[str, Any]:
-        """现场构建单个实体的最小快照（正则动态命中实体用；不依赖 config_flow）。
-
-        仅取展示用设备名；耗材由显式绑定的 consumable_id 决定（不再设备自动匹配）。
-        """
+        """现场构建单个实体的最小快照（正则动态命中实体用；不依赖 config_flow）。 """
         ent_reg = er.async_get(self.hass)
         dev_reg = dr.async_get(self.hass)
         reg_entry = None
@@ -159,11 +140,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         }
 
     def _regex_match_entities(self, pattern: str) -> list[str]:
-        """按正则规则运行时匹配当前实体注册表中的实体 ID。
-
-        与手动多选取并集构成分组 live 成员；新增匹配实体在下次刷新自动入组。
-        仅匹配 sensor. 域且未被禁用的实体（与手动 EntitySelector 域一致）。
-        """
+        """按正则规则运行时匹配当前实体注册表中的实体 ID。"""
         pattern = (pattern or "").strip()
         if not pattern:
             return []
@@ -345,10 +322,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
     def _group_threshold(
         self, group: dict[str, Any]
     ) -> tuple[str, float | None, str, str]:
-        """分组阈值：分组覆盖优先，否则回退条目级（再回退类型/通用在属性里）。
-
-        返回 (type, value, unit, operator)。
-        """
+        """分组阈值：分组覆盖优先，否则回退条目级（再回退类型/通用在属性里）。"""
         override = group.get(CONF_THRESHOLD)
         if override is not None:
             return (
@@ -510,11 +484,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         }
 
     def group_min_value(self, group: dict[str, Any]) -> float | None:
-        """分组内实体实时值的最小值（None 不参与比较，全 None 返回 None）。
-
-        供「分组数据传感器」作主状态：最小值最能代表组内最紧绷的实体，
-        便于自动化直接读取阈值边界。时间类阈值已换算到标准单位后取最小。
-        """
+        """分组内实体实时值的最小值（None 不参与比较，全 None 返回 None）。 """
         if self._group_is_custom(group):
             return None
         values = [
@@ -525,11 +495,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return min(values) if values else None
 
     def group_member_data(self, group: dict[str, Any]) -> dict[str, Any]:
-        """分组成员明细（分正常 / 已触发两类），供分组数据传感器暴露给自动化。
-
-        每条成员含 entity_id / 显示名 / 实时值 / 单位；已触发成员按阈值单独归类。
-        自定义分组无绑定实体，返回空明细（仅留分组元信息）。
-        """
+        """分组成员明细（分正常 / 已触发两类），供分组数据传感器暴露给自动化。"""
         if self._group_is_custom(group):
             return {
                 "group": group.get(CONF_GROUP_NAME),
@@ -662,12 +628,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
     def _entity_consumables(self,
         snapshot: dict[str, Any],
     ) -> tuple[str | None, str | None]:
-        """实体绑定的具体耗材（取自快照中的 consumable_id，显式绑定）。
-
-        绑定耗材到实体是显式动作（bind 服务写入 consumable_id）；不再按设备
-        自动匹配（已移除设备映射库）。无 consumable_id → 返回 None，由调用方
-        显示「未知」。
-        """
+        """实体绑定的具体耗材（取自快照中的 consumable_id，显式绑定）。"""
         if self._library is None:
             return None, None
         cid = snapshot.get("consumable_id")
@@ -915,11 +876,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return pairs
 
     def alert_text(self, style: str) -> str:
-        """按样式生成消息文案（多设备逐行）。
-        human：「{设备名} 请更换耗材。」（话术走翻译键，通用文案）；
-        value：「{设备名} {当前值}{单位}」。
-        triggered_pairs() 已收敛到单一事实源。
-        """
+        """按样式生成消息文案（多设备逐行）。"""
         lines: list[str] = []
         for display, value, unit in self.triggered_pairs():
             if style == NOTIFY_STYLE_VALUE:
