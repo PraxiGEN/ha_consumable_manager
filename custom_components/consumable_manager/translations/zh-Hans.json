@@ -115,10 +115,13 @@
         "consume": "减少"
       }
     },
-    "service_include": {
+    "service_data_type": {
       "options": {
-        "stock": "库存",
-        "consumable_types": "耗材类型条目"
+        "stock": "库存条目",
+        "type_entry": "耗材类型条目",
+        "group_data": "分组实体数据",
+        "types": "耗材类型",
+        "consumables": "耗材"
       }
     }
   },
@@ -347,6 +350,27 @@
           }
         }
       },
+      "group_entity_data": {
+        "name": "分组实体数据",
+        "state_attributes": {
+          "group": {
+            "name": "分组"
+          },
+          "consumable_type": {
+            "name": "耗材类型",
+            "state": {
+              "battery": "无线设备（电池）",
+              "filter": "净化设备滤芯",
+              "ink": "打印机耗材",
+              "robot_vacuum": "扫地机耗材",
+              "water_purifier": "净水器耗材"
+            }
+          },
+          "bound_entity_data": {
+            "name": "已绑定实体数据"
+          }
+        }
+      },
       "stock_item": {
         "state_attributes": {
           "item_id": {
@@ -402,7 +426,7 @@
   "services": {
     "bind_entity": {
       "name": "绑定实体到耗材",
-      "description": "将设备耗材实体绑定到耗材库中的耗材（按设备自动匹配或手动指定 consumable_id），写入对应类型条目的绑定列表；可选关联一个库存项。",
+      "description": "将设备耗材实体绑定到耗材库中的耗材（显式指定 consumable_id 或关联库存项继承），写入对应类型条目的绑定列表；可选关联一个库存项。",
       "fields": {
         "entity_id": {
           "name": "实体",
@@ -410,7 +434,7 @@
         },
         "consumable_id": {
           "name": "耗材 ID",
-          "description": "要绑定的耗材，留空按设备自动匹配"
+          "description": "要绑定的耗材（必填：显式指定或经关联库存项继承）"
         },
         "item": {
           "name": "关联库存项",
@@ -419,10 +443,6 @@
         "group_id": {
           "name": "目标分组",
           "description": "绑定写入的目标分组 ID；留空写入默认分组（无分组则自动创建默认分组）"
-        },
-        "record_device": {
-          "name": "记入设备映射",
-          "description": "同时将「厂商+型号到耗材」合并追加进用户库设备映射（不覆盖既有）"
         }
       }
     },
@@ -438,7 +458,7 @@
     },
     "query_binding": {
       "name": "查询绑定",
-      "description": "查询实体与耗材的绑定关系（按实体、耗材或库存项过滤）。传入 entity_id 时，额外返回该实体的设备信息（entity_info）与库内推荐耗材（suggested），便于绑定前查询。",
+      "description": "查询实体与耗材的绑定关系（按实体、耗材或库存项过滤）。仅返回实体与耗材的映射，不查询设备注册表的厂商 / 型号 / 区域等设备信息。",
       "fields": {
         "entity_id": {
           "name": "实体",
@@ -480,28 +500,6 @@
         }
       }
     },
-    "add_device": {
-      "name": "添加设备映射",
-      "description": "在本地用户库中新增或覆盖设备与耗材的映射关系（锚点：制造商 + 型号，重叠整条替换，原子写盘）。",
-      "fields": {
-        "manufacturer": {
-          "name": "制造商",
-          "description": "设备制造商"
-        },
-        "models": {
-          "name": "型号列表",
-          "description": "设备型号（JSON 字符串数组）"
-        },
-        "name": {
-          "name": "设备名称",
-          "description": "设备显示名称"
-        },
-        "consumables": {
-          "name": "耗材 ID 列表",
-          "description": "设备使用的耗材 ID（JSON 字符串数组）"
-        }
-      }
-    },
     "add_type": {
       "name": "添加自定义类型",
       "description": "在本地用户库中新增自定义耗材类型（config/.consumable_manager/user_library.json，原子写盘）。类型键仅允许小写字母、数字与下划线且不可与已有类型重复（新建语义）；阈值字段与内置类型同构。",
@@ -532,13 +530,29 @@
         }
       }
     },
-    "extract": {
-      "name": "提取数据",
-      "description": "提取条目的结构化数据（可指定数据项）。",
+    "query_data": {
+      "name": "查询数据",
+      "description": "查询本集成的各类数据；必须指定数据种类（data_type）。group_data 可按下方条件细分，其余种类直接返回全量。",
       "fields": {
-        "include": {
-          "name": "数据项",
-          "description": "要包含的数据项（库存 / 耗材类型条目）"
+        "data_type": {
+          "name": "数据种类",
+          "description": "stock 库存条目 / type_entry 耗材类型条目 / group_data 分组实体数据 / types 类型元数据 / consumables 耗材"
+        },
+        "consumable_type": {
+          "name": "耗材类型",
+          "description": "仅 group_data / consumables 生效：按耗材类型过滤（如 filter 滤芯）"
+        },
+        "entry_id": {
+          "name": "条目",
+          "description": "仅 group_data 生效：选择要查询的集成条目（下拉已添加条目）"
+        },
+        "group_entity": {
+          "name": "分组",
+          "description": "仅 group_data 生效：选择要查询的分组（选择该分组对应的实体）"
+        },
+        "triggered_only": {
+          "name": "仅已触发",
+          "description": "仅 group_data 生效：仅返回存在已触发成员的分组"
         }
       }
     },
