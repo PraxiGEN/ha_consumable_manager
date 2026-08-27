@@ -120,7 +120,7 @@ def _build_entry_type_options(library: Library,
 def build_source_snapshots(hass: HomeAssistant,
     entity_ids: list[str],
 ) -> list[dict[str, Any]]:
-    """反查实体/设备注册表，构建绑定实体快照。"""
+    """反查实体/设备注册表，构建绑定实体快照（仅取展示用设备名）。"""
     ent_reg = er.async_get(hass)
     dev_reg = dr.async_get(hass)
     snapshots: list[dict[str, Any]] = []
@@ -130,8 +130,6 @@ def build_source_snapshots(hass: HomeAssistant,
         snapshots.append({
             "entity_id": entity_id,
             "device_name": getattr(dev, "name", None),
-            "device_model": getattr(dev, "model", None),
-            "manufacturer": getattr(dev, "manufacturer", None),
         })
     return snapshots
 
