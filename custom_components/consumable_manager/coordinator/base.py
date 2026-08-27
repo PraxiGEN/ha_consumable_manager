@@ -16,7 +16,7 @@ from ..const import (
     CONF_NOTIFY_MODE, CONF_NOTIFY_STYLE, NOTIFY_MODE_REALTIME, NOTIFY_MODE_SCHEDULED,
     NOTIFY_STYLE_HUMAN, TODO_STATUS_COMPLETED, STATE_OK,
     STATE_LOW_STOCK, STATE_REPLACE_NEEDED, THRESHOLD_TYPE_LIFETIME_PERCENT,
-    THRESHOLD_TYPE_NUMERIC, TIME_UNIT_TO_HOURS, OPERATOR_EQUAL, OPERATOR_GREATER_THAN,
+    THRESHOLD_TYPE_NUMERIC, TIME_UOM_TO_HOURS, OPERATOR_EQUAL, OPERATOR_GREATER_THAN,
     OPERATOR_LESS_THAN,
 )
 from ..user_library import async_load_library
@@ -109,11 +109,13 @@ def evaluate_threshold(threshold_type: str,
     """判断是否越过阈值（纯函数，便于单元测试）。"""
     if threshold is None:
         return False
-    # 单位换算：时间类换算到小时（内部标准单位），剩余寿命% / 数值类不换算
+    # 单位换算：时间类换算到小时（内部标准单位），剩余寿命% / 数值类不换算。
+    # 读数侧 (_read_values) 同样经 TIME_UOM_TO_HOURS 换算到小时，保证阈值与读数
+    # 始终在同一个内部单位（小时）上比较，避免口径不一致导致误触发 / 漏触发。
     if unit is not None and threshold_type not in (
         THRESHOLD_TYPE_LIFETIME_PERCENT, THRESHOLD_TYPE_NUMERIC
     ):
-        threshold = threshold * TIME_UNIT_TO_HOURS.get(unit, 1.0)
+        threshold = threshold * TIME_UOM_TO_HOURS.get(unit, 1.0)
     for value in values:
         if value is None:
             continue
@@ -342,9 +344,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
         """按样式生成告警消息文案（公开接口，供通知平台与定时合并推送调用）。"""
         return self.title
 
-    async def _async_send_alert(self,
-        newly_triggered: tuple[str, ...] | None = None,
-    ) -> None:
+    async def _async_send_alert(self) -> None:
         """按生效配置发送；实时立即单发，定时只置待推送标记。"""
         config = find_notification_config(self.hass, self.options)
         if config is None:
@@ -375,13 +375,15 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
                 self.alert_pending = False
             return
         if newly_triggered:
-            await self._async_send_alert(newly_triggered=newly_triggered)
+            await self._async_send_alert()
         if not new:
             self.alert_pending = False
 
-    def _persist_alert_baseline(self, new_triggered: TriggeredSet) -> None:
-        """持久化触发集合签名（仅运行期且变化时写 options，供 reload 后恢复基线）。"""
-        if not self._baseline_established:
+    def _persist_alert_baseline(
+        self, new_triggered: TriggeredSet, force: bool = False
+    ) -> None:
+        """持久化触发集合签名（供 reload 后恢复基线）。"""
+        if not self._baseline_established and not force:
             return
         sig = new_triggered.signature()
         if self._entry.options.get(CONF_LAST_TRIGGERED_SIG) == sig:
@@ -393,6 +395,7 @@ class BaseCoordinator(DataUpdateCoordinator[None]):
     def sync_alert_baseline(self) -> None:
         """配置变更（绑定/解绑/编辑分组）后调用：把当前触发集合作为新基线。"""
         self._prev_triggered = self._compute_triggered()
+        self._persist_alert_baseline(self._prev_triggered, force=True)
 
     async def _async_update_data(self) -> None:
         """单次刷新唯一执行路径。"""
