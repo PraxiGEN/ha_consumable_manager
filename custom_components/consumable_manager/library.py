@@ -36,13 +36,6 @@ def resolve_name(value: LocalizedText,
                 return text
     return fallback
 
-def device_name_key(manufacturer: str, model: str) -> str:
-    """设备映射在 names.json 中的锚点：制造商_型号（规范化小写）。"""
-    def _slug(part: str) -> str:
-        return re.sub(r"[^a-z0-9]+", "_", part.lower()).strip("_")
-
-    return f"{_slug(manufacturer)}_{_slug(model)}"
-
 @dataclass(frozen=True)
 class TypeMeta:
     """耗材类型元数据（来自 index.json 的 types 表）。"""
@@ -75,24 +68,6 @@ class Consumable:
             self.name, locale, fallback=self.model, names=self.names
         )
 
-@dataclass(frozen=True)
-class DeviceMapping:
-    """设备-耗材映射（来自 devices.json）。"""
-
-    manufacturer: str
-    models: tuple[str, ...]
-    name: LocalizedText
-    consumables: tuple[str, ...]
-    names: dict[str, str] | None = None
-
-    def display_name(self, locale: str | None = None) -> str:
-        return resolve_name(
-            self.name,
-            locale,
-            fallback=f"{self.manufacturer} {self.models[0]}",
-            names=self.names,
-        )
-
 class LibraryError(ValueError):
     """耗材库加载或校验失败。"""
 
@@ -103,12 +78,10 @@ class Library:
         self,
         type_metas: tuple[TypeMeta, ...],
         consumables: tuple[Consumable, ...],
-        devices: tuple[DeviceMapping, ...],
     ) -> None:
         self._type_metas = type_metas
         self._types: dict[str, TypeMeta] = {t.key: t for t in type_metas}
         self._consumables = consumables
-        self._devices = devices
         self._by_id: dict[str, Consumable] = {c.id: c for c in consumables}
         self._by_type: dict[str, tuple[Consumable, ...]] = {}
         for c in consumables:
@@ -169,42 +142,6 @@ class Library:
             if any(needle in value.lower() for value in haystack):
                 result.append(item)
         return result
-
-    # ---- 反查：设备 → 耗材 ----
-    def find_compatible(self,
-        manufacturer: str | None,
-        model: str | None,
-    ) -> list[Consumable]:
-        """按设备制造商/型号匹配映射（型号前缀匹配，忽略版本后缀）。"""
-        if not model:
-            return []
-        model_lower = model.lower()
-        result: list[Consumable] = []
-        seen: set[str] = set()
-        for dev in self._devices:
-            if not any(
-                m and model_lower.startswith(m.lower()) for m in dev.models
-            ):
-                continue
-            if manufacturer and dev.manufacturer:
-                if dev.manufacturer.lower() != manufacturer.lower():
-                    continue
-            for item_id in dev.consumables:
-                if item_id in seen:
-                    continue
-                if item := self._by_id.get(item_id):
-                    result.append(item)
-                    seen.add(item_id)
-        return result
-
-    def devices_for(self, item_id: str) -> tuple[DeviceMapping, ...]:
-        """反向查询：哪些设备使用了指定耗材。"""
-        return tuple(
-            dev for dev in self._devices if item_id in dev.consumables
-        )
-
-    def all_devices(self) -> tuple[DeviceMapping, ...]:
-        return self._devices
 
 # ---- 校验辅助（公共：用户库复用同一套逐字段校验）----
 def _require(condition: bool, message: str) -> None:
@@ -310,70 +247,27 @@ def parse_consumable(
         names=(names or {}).get(item_id),
     )
 
-def parse_device(
-    raw: dict[str, Any],
-    path: Path,
-    known_ids: set[str],
-    names: dict[str, dict[str, str]] | None = None,
-) -> DeviceMapping:
-    manufacturer = raw.get("manufacturer")
-    _require(
-        isinstance(manufacturer, str) and manufacturer.strip(),
-        f"{path}: 条目缺少 manufacturer",
-    )
-    models = raw.get("models")
-    _require(
-        isinstance(models, list)
-        and models
-        and all(isinstance(m, str) and m.strip() for m in models),
-        f"{path}: 条目 {manufacturer} 缺少 models（非空字符串数组）",
-    )
-    name = _validate_name(
-        raw.get("name"), path, f"设备 {manufacturer} {models[0]}"
-    )
-    consumables = raw.get("consumables")
-    _require(
-        isinstance(consumables, list) and consumables,
-        f"{path}: 条目 {manufacturer} {models[0]} 缺少 consumables 列表",
-    )
-    for item_id in consumables:
-        _require(
-            item_id in known_ids,
-            f"{path}: 设备 {manufacturer} {models[0]} 引用了未知耗材 {item_id}",
-        )
-    return DeviceMapping(
-        manufacturer=manufacturer,
-        models=tuple(models),
-        name=name,
-        consumables=tuple(consumables),
-        names=(names or {}).get(
-            device_name_key(manufacturer, models[0])
-        ),
-    )
-
 def _load_names_table(root: Path) -> tuple[
     dict[str, dict[str, str]],
     dict[str, dict[str, str]],
-    dict[str, dict[str, str]],
 ]:
-    """加载 names.json 多语言映射表；缺失 / 损坏时降级为空表并告警。"""
+    """加载 names.json 多语言映射表（types / consumables）；缺失 / 损坏时降级为空表并告警。"""
     names_path = root / "names.json"
     if not names_path.is_file():
-        return {}, {}, {}
+        return {}, {}
     try:
         raw = json.loads(names_path.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError):
         LOGGER.warning("names.json 解析失败，已降级为数据内 name")
-        return {}, {}, {}
+        return {}, {}
     if not isinstance(raw, dict):
         LOGGER.warning("names.json 结构非法，已降级为数据内 name")
-        return {}, {}, {}
+        return {}, {}
     return (
         raw.get("types", {}) if isinstance(raw.get("types"), dict) else {},
         raw.get("consumables", {})
         if isinstance(raw.get("consumables"), dict)
         else {},
-        raw.get("devices", {}) if isinstance(raw.get("devices"), dict) else {},
     )
 
 def load_library(base_dir: Path | None = None) -> Library:
@@ -393,7 +287,7 @@ def load_library(base_dir: Path | None = None) -> Library:
     )
 
     # 0. 多语言映射表（可选附属文件）
-    type_names, consumable_names, device_names = _load_names_table(root)
+    type_names, consumable_names = _load_names_table(root)
 
     # 1. 类型元数据表
     raw_types = index.get("types")
@@ -430,14 +324,4 @@ def load_library(base_dir: Path | None = None) -> Library:
         seen_ids.add(item.id)
         consumables.append(item)
 
-    # 3. 设备映射扁平数组
-    devices_path = root / "devices.json"
-    _require(devices_path.is_file(), f"耗材库缺少 devices.json: {devices_path}")
-    raw_devices = json.loads(devices_path.read_text(encoding="utf-8"))
-    _require(isinstance(raw_devices, list), f"{devices_path}: 应为 JSON 数组")
-    devices = tuple(
-        parse_device(raw, devices_path, seen_ids, device_names)
-        for raw in raw_devices
-    )
-
-    return Library(type_metas, tuple(consumables), devices)
+    return Library(type_metas, tuple(consumables))
