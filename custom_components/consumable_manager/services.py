@@ -84,14 +84,7 @@ def _coerce_item_id( hass: HomeAssistant, raw: str | None ) -> str | None:
 def _resolve_group_id(
     hass: HomeAssistant, value: str | None
 ) -> str | None:
-    """把分组选择框的值规整为 group_id。
-
-    选择框是实体选择器（列出本集成的分组传感器），用户选中的是某个分组对应的
-    诊断实体（ReplaceStatusSensor，unique_id 形如 {entry_id}_grp_{gid}）或分组数据
-    实体（GroupDataSensor，形如 {entry_id}_grpdata_{gid}）；这里经实体注册表反查
-    其 unique_id 解析出真实 group_id。
-    若值不含 '.'（如测试或手输的明文 group_id），则原样返回以兼容。
-    """
+    """分组选择框的值规整为 group_id。"""
     if not value:
         return None
     if "." not in value:
@@ -117,10 +110,7 @@ async def _resolve_consumable(
     library: Library,
     consumable_id: str | None,
 ) -> tuple[Consumable, str]:
-    """解析目标耗材：必须显式指定 consumable_id（或在调用前由关联库存项继承）。
-
-    设备→耗材的自动匹配已移除（不再维护设备映射库）；绑定耗材到实体是显式动作。
-    """
+    """解析目标耗材：必须显式指定 consumable_id（或在调用前由关联库存项继承）。"""
     if not consumable_id:
         raise ServiceValidationError(
             "未指定 consumable_id，请在绑定时显式选择耗材或关联一个库存项"
@@ -156,11 +146,7 @@ def _link_stock_item(hass: HomeAssistant,
     hass.config_entries.async_update_entry(stock.entry, options=options)
 
 async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
-    """绑定实体到耗材（显式指定 consumable_id 或继承关联库存项），可选关联库存项。
-
-    设备→耗材的自动匹配与沉淀已移除（不再维护设备映射库）；绑定耗材到实体
-    是显式动作，由调用方在 consumable_id 中明确指定目标耗材。
-    """
+    """绑定实体到耗材（显式指定 consumable_id 或继承关联库存项），可选关联库存项。"""
     entity_id = call.data.get("entity_id")
     consumable_id = call.data.get("consumable_id")
     item_id = _coerce_item_id(hass, call.data.get("item"))
@@ -249,12 +235,7 @@ async def _collect_bindings(
     consumable_id: str | None = None,
     item_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """收集实体↔耗材绑定映射（按实体 / 耗材 / 库存项过滤）。
-
-    仅返回实体与耗材的绑定映射（consumable_id 及耗材型号 / 名称），
-    不查询设备注册表的厂商 / 型号 / 区域等设备信息（设备映射已移除）。
-    供 query_binding 服务与 query_data(data_type=binding) 共用。
-    """
+    """收集实体↔耗材绑定映射（按实体 / 耗材 / 库存项过滤）。"""
     filter_type: str | None = None
     if consumable_id:
         consumable = library.get(consumable_id)
@@ -306,11 +287,7 @@ async def _collect_bindings(
 async def async_query_binding(hass: HomeAssistant,
     call: ServiceCall,
 ) -> dict[str, Any]:
-    """查询绑定关系：按实体 / 耗材 / 库存项过滤。
-
-    仅返回实体与耗材的绑定映射（consumable_id 及耗材型号 / 名称），
-    不查询设备注册表的厂商 / 型号 / 区域等设备信息（设备映射已移除）。
-    """
+    """查询绑定关系：按实体 / 耗材 / 库存项过滤。"""
     entity_id = call.data.get("entity_id")
     consumable_id = call.data.get("consumable_id")
     item_id = _coerce_item_id(hass, call.data.get("item"))
@@ -323,16 +300,7 @@ async def async_query_binding(hass: HomeAssistant,
 async def async_unbind_entity(hass: HomeAssistant,
     call: ServiceCall,
 ) -> dict[str, Any]:
-    """解除实体绑定的耗材：只清除 实体→consumable_id 这条映射，实体仍留分组。
-
-    解绑的语义是「移除实体指向哪个耗材的映射关系」，把快照的 consumable_id
-    置空即可；实体快照本身继续留在 binding_groups.source_entities 内，作为数据源
-    被阈值监控（越过阈值仍会生成待办，只是「耗材」行显示未知）。
-
-    这与「把实体从分组移除（停止监控）」是两回事——后者由配置流编辑分组实体
-    完成，不涉及耗材映射。若实体不在任何分组、或已无 consumable_id 可解绑，
-    则视为无可解绑并报错。
-    """
+    """解除实体绑定的耗材：只清除 实体→consumable_id 这条映射，实体仍留分组。"""
     entity_id = call.data.get("entity_id")
     if not entity_id:
         raise ServiceValidationError("缺少 entity_id")
@@ -441,7 +409,6 @@ async def async_add_consumable(hass: HomeAssistant,
         "path": str(user_library_path(hass)),
     }
 
-
 async def async_add_type( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
     """添加自定义类型到用户库（新建语义，禁止覆盖；meta 需通过 parse_type 校验）。"""
     key = str(call.data.get("type_key") or "").strip().lower()
@@ -503,19 +470,7 @@ _DATA_TYPES = (
 async def async_query_data(hass: HomeAssistant,
     call: ServiceCall,
 ) -> dict[str, Any]:
-    """查询本集成的各类数据（必须指定 data_type，按数据类型支持不同过滤）。
-
-    data_type 取值：
-    - stock          库存条目（直接返回，不过滤）
-    - type_entry     耗材类型条目（直接返回，不过滤）
-    - group_data     分组实体数据（可按 entry_id / consumable_type /
-                     group_entity / triggered_only 细分过滤）
-    - types          耗材类型元数据（直接返回）
-    - consumables    全部耗材（可按 consumable_type 过滤）
-
-    binding（实体↔耗材绑定）由独立的 query_binding 服务提供，本服务不重复。
-    过滤字段未提供时视为不过滤（返回全量）。
-    """
+    """查询本集成的各类数据（必须指定 data_type，按数据类型支持不同过滤）。"""
     data_type = call.data.get("data_type")
     if not data_type:
         raise ServiceValidationError(
@@ -617,14 +572,7 @@ def _query_group_data(
     group_id: str | None = None,
     triggered_only: bool = False,
 ) -> list[dict[str, Any]]:
-    """分组实体数据：每非自定义分组输出成员明细（含已绑定耗材名称）。
-
-    过滤：
-    - entry_id        限定条目
-    - consumable_type 限定耗材类型
-    - group_id        限定分组
-    - triggered_only  仅保留存在已触发成员的分组
-    """
+    """分组实体数据：每非自定义分组输出成员明细（含已绑定耗材名称）。"""
     result: list[dict[str, Any]] = []
     for coord in _type_coordinators(hass):
         if entry_id and coord.entry.entry_id != entry_id:
@@ -681,10 +629,7 @@ def _query_consumables(
     library: Library, locale: str | None,
     consumable_type: str | None = None,
 ) -> list[dict[str, Any]]:
-    """全部耗材列表（含 id / 类型 / 型号 / 名称 / 单位 / meta）。
-
-    可选 consumable_type 过滤（如仅返回滤芯类耗材）。
-    """
+    """全部耗材列表（含 id / 类型 / 型号 / 名称 / 单位 / meta）。"""
     consumables = library.consumables
     if consumable_type:
         consumables = [c for c in consumables if c.cons_type == consumable_type]
