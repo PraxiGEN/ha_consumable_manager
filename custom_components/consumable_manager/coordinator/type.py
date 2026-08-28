@@ -26,6 +26,7 @@ from ..const import (
     STATE_OK, STATE_REPLACE_NEEDED, TODO_STATUS_NEEDS_ACTION, TODO_STATUS_COMPLETED, TIME_UOM_TO_HOURS,
 )
 
+from .. import bindings
 from ..library import Library, TypeMeta
 from .base import (
     BaseCoordinator, TriggeredSet, _to_float, evaluate_threshold,
@@ -520,7 +521,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         for entity_id in g_resolved:
             snapshot = snapshots.get(entity_id, {})
             # 实体已绑定具体耗材 → 解析耗材显示名（悬空/未绑定 → None）
-            cid = snapshot.get("consumable_id")
+            cid = bindings.get_binding(self.hass, entity_id)
             consumable_name = None
             if cid and self._library is not None:
                 c = self._library.get(cid)
@@ -625,13 +626,11 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         area = ar.async_get(self.hass).async_get_area(device.area_id)
         return getattr(area, "name", None) or None
 
-    def _entity_consumables(self,
-        snapshot: dict[str, Any],
-    ) -> tuple[str | None, str | None]:
-        """实体绑定的具体耗材（取自快照中的 consumable_id，显式绑定）。"""
+    def _entity_consumables(self, entity_id: str) -> tuple[str | None, str | None]:
+        """实体绑定的具体耗材（取自独立绑定层 entity_id↔consumable_id）。"""
         if self._library is None:
             return None, None
-        cid = snapshot.get("consumable_id")
+        cid = bindings.get_binding(self.hass, entity_id)
         if not cid:
             return None, None
         consumable = self._library.get(cid)
@@ -693,7 +692,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             if display:
                 lines.append(self._md_kv(NOTIFY_TEXT_DESC_DEVICE, display))
             lines.append(self._md_kv(NOTIFY_TEXT_DESC_ENTITY, eid))
-            cons_names, specs = self._entity_consumables(snapshot)
+            cons_names, specs = self._entity_consumables(eid)
             if cons_names:
                 lines.append(self._md_kv(NOTIFY_TEXT_CONSUMABLES, cons_names))
             else:
@@ -711,14 +710,15 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             parts.append("\n".join(lines))
         if not parts:
             # 无触发实体（如刚恢复）：优先自定义分组绑定的具体耗材；
-            # 其次按本条目各绑定快照的 consumable_id 显示具体耗材；
-            # 全未命中显示「未知」。
+            # 其次按各实体独立绑定层解析具体耗材；全未命中显示「未知」。
             label = self._custom_bound_consumables_label()
             if label is None:
                 matched: list[str] = []
                 seen: set[str] = set()
                 for snap in self.source_snapshots:
-                    names, _specs = self._entity_consumables(snap)
+                    names, _specs = self._entity_consumables(
+                        snap.get("entity_id", "")
+                    )
                     if names and names not in seen:
                         matched.append(names)
                         seen.add(names)
