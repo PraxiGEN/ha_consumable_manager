@@ -1,7 +1,6 @@
 """耗材管理器 服务平台。"""
 from __future__ import annotations
 
-import copy
 import json
 from typing import Any
 
@@ -13,10 +12,11 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import SupportsResponse
 
+from . import bindings
 from .const import (
-    DOMAIN, CONF_BINDING_GROUPS, CONF_CONSUMABLE_ID, CONF_GROUP_ID,
+    DOMAIN, CONF_CONSUMABLE_ID, CONF_GROUP_ID,
     CONF_GROUP_NAME, CONF_ITEM_ID, CONF_ITEM_NAME, CONF_ITEM_TYPE,
-    CONF_SOURCE_ENTITIES, CONF_STOCK_ITEMS,
+    CONF_STOCK_ITEMS,
     ENTRY_TYPE_STOCK, THRESHOLD_TYPES, THRESHOLD_UNIT_OPTIONS,
 )
 from .coordinator import (
@@ -25,7 +25,6 @@ from .coordinator import (
     StockCoordinator,
     _find_stock_coordinator,
 )
-from .config_flow import build_source_snapshots
 from .library import ID_PATTERN, Consumable, Library, LibraryError
 from .user_library import (
     async_load_library,
@@ -146,7 +145,7 @@ def _link_stock_item(hass: HomeAssistant,
     hass.config_entries.async_update_entry(stock.entry, options=options)
 
 async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[str, Any]:
-    """绑定实体到耗材（显式指定 consumable_id 或继承关联库存项），可选关联库存项。"""
+    """绑定实体到耗材（纯映射，写入独立绑定层，与类型条目彻底解耦）。"""
     entity_id = call.data.get("entity_id")
     consumable_id = call.data.get("consumable_id")
     item_id = _coerce_item_id(hass, call.data.get("item"))
@@ -171,54 +170,8 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
     )
     if inherited:
         matched_by = "stock"
-    coord = _find_type_coordinator(hass, consumable.cons_type)
-    if coord is None:
-        raise ServiceValidationError(
-            f"尚未添加「{consumable.cons_type}」类型的集成条目，"
-            "请先在集成中添加该类型"
-        )
-    # 把解析到的具体耗材 id 写入快照，供「查询绑定」回显耗材型号
-    options = dict(coord.options)
-    groups = copy.deepcopy(coord.groups)
-    new_snap = build_source_snapshots(hass, [entity_id])[0]
-    new_snap["consumable_id"] = consumable.id
-    # 目标分组：显式 group_id 优先；否则首个分组（无则建默认组）
-    target_gid = call.data.get("group_id")
-    target = (
-        next((g for g in groups if g.get(CONF_GROUP_ID) == target_gid), None)
-        if target_gid
-        else None
-    )
-    if target is None:
-        target = (
-            groups[0]
-            if groups
-            else {
-                CONF_GROUP_ID: "default",
-                CONF_GROUP_NAME: coord.title or "默认",
-                CONF_SOURCE_ENTITIES: [],
-            }
-        )
-        if not groups:
-            groups.append(target)
-    # 在目标分组内更新或追加快照（避免改到条目原始 options）
-    snaps = target.setdefault(CONF_SOURCE_ENTITIES, [])
-    found = False
-    for s in snaps:
-        if s.get("entity_id") == entity_id:
-            s["consumable_id"] = consumable.id
-            found = True
-            break
-    if not found:
-        snaps.append(new_snap)
-    options[CONF_BINDING_GROUPS] = groups
-    options.pop(CONF_SOURCE_ENTITIES, None)
-    hass.config_entries.async_update_entry(coord.entry, options=options)
-    # 纯映射：写库即生效（HA 会因 options 变更重载条目），不再立即刷新。
-    # 把新实体并入触发基线（内存 + 持久化），使重载后的新协调器首轮刷新
-    # 差集为空 → 不发通知；越阈实体的「更换」待办由后续监控周期（重载/轮询）
-    # 经 step0 自然产生，而非绑定动作的副作用。绑定服务本身不刷新 → 不生成待办/通知。
-    coord.sync_alert_baseline()
+    # 写入独立绑定层（entity_id ↔ consumable_id）。
+    await bindings.async_set_binding(hass, entity_id, consumable.id)
 
     if item_id:
         _link_stock_item(hass, item_id, consumable)
@@ -227,7 +180,7 @@ async def async_bind_entity( hass: HomeAssistant, call: ServiceCall ) -> dict[st
         "entity_id": entity_id,
         "consumable_id": consumable.id,
         "consumable_name": consumable.display_name(hass.config.language),
-        "entry_type": coord.cons_type,
+        "entry_type": consumable.cons_type,
         "matched_by": matched_by,
         "item_id": item_id,
     }
@@ -239,7 +192,7 @@ async def _collect_bindings(
     consumable_id: str | None = None,
     item_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """收集实体↔耗材绑定映射（按实体 / 耗材 / 库存项过滤）。"""
+    """收集实体↔耗材绑定映射（按实体 / 耗材 / 库存项过滤），来源为独立绑定层。"""
     filter_type: str | None = None
     if consumable_id:
         consumable = library.get(consumable_id)
@@ -252,41 +205,33 @@ async def _collect_bindings(
                     filter_type = item.get(CONF_ITEM_TYPE)
                     break
 
-    bindings: list[dict[str, Any]] = []
+    # 当前越阈实体集合（用于回显 triggered），跨全部类型条目
+    triggered = set()
     for coord in _type_coordinators(hass):
-        if filter_type and coord.cons_type != filter_type:
+        triggered |= set(coord.triggered_entities())
+
+    binding_map = await bindings.async_load_bindings(hass)
+    result: list[dict[str, Any]] = []
+    for eid, cid in binding_map.items():
+        if entity_id and eid != entity_id:
             continue
-        triggered = set(coord.triggered_entities())
-        group_of = {
-            s.get("entity_id"): g.get(CONF_GROUP_NAME)
-            for g in coord.groups
-            for s in g.get(CONF_SOURCE_ENTITIES, [])
-        }
-        for snapshot in coord.source_snapshots:
-            sid = snapshot.get("entity_id")
-            if entity_id and sid != entity_id:
-                continue
-            # 回显绑定的具体耗材（型号 / 名称）
-            cid = snapshot.get("consumable_id")
-            cmodel = None
-            cname = None
-            if cid:
-                consumable = library.get(cid)
-                if consumable is not None:
-                    cmodel = consumable.model
-                    cname = consumable.display_name(hass.config.language)
-            bindings.append(
-                {
-                    "entry_type": coord.cons_type,
-                    "entity_id": sid,
-                    "group": group_of.get(sid),
-                    "consumable_id": cid,
-                    "consumable_model": cmodel,
-                    "consumable_name": cname,
-                    "triggered": sid in triggered,
-                }
-            )
-    return bindings
+        if consumable_id and cid != consumable_id:
+            continue
+        cons = library.get(cid)
+        if filter_type and (cons is None or cons.cons_type != filter_type):
+            continue
+        result.append(
+            {
+                "entity_id": eid,
+                "consumable_id": cid,
+                "consumable_model": cons.model if cons else None,
+                "consumable_name": (
+                    cons.display_name(hass.config.language) if cons else None
+                ),
+                "triggered": eid in triggered,
+            }
+        )
+    return result
 
 async def async_query_binding(hass: HomeAssistant,
     call: ServiceCall,
@@ -296,60 +241,32 @@ async def async_query_binding(hass: HomeAssistant,
     consumable_id = call.data.get("consumable_id")
     item_id = _coerce_item_id(hass, call.data.get("item"))
     library = await async_load_library(hass)
-    bindings = await _collect_bindings(
+    found = await _collect_bindings(
         hass, library, entity_id, consumable_id, item_id
     )
-    return {"bindings": bindings}
+    return {"bindings": found}
 
 async def async_unbind_entity(hass: HomeAssistant,
     call: ServiceCall,
 ) -> dict[str, Any]:
-    """解除实体绑定的耗材：只清除 实体→consumable_id 这条映射，实体仍留分组。"""
+    """解除实体绑定的耗材：仅删除独立绑定层里的 entity_id↔consumable_id 映射。"""
     entity_id = call.data.get("entity_id")
     if not entity_id:
         raise ServiceValidationError("缺少 entity_id")
 
-    removed: list[dict[str, Any]] = []
-    did_unbind = False
-    for coord in _type_coordinators(hass):
-        groups = copy.deepcopy(coord.groups)
-        if not any(
-            s.get("entity_id") == entity_id
-            for g in groups
-            for s in g.get(CONF_SOURCE_ENTITIES, [])
-        ):
-            continue
-        # 清空调该实体快照的 consumable_id（移除 实体→耗材 映射）；
-        # 实体快照本身保留，分组不缩水、也不丢弃空分组。
-        unbound_cid = None
-        for g in groups:
-            for s in g.get(CONF_SOURCE_ENTITIES, []):
-                if s.get("entity_id") == entity_id and s.get(CONF_CONSUMABLE_ID):
-                    unbound_cid = s[CONF_CONSUMABLE_ID]
-                    s[CONF_CONSUMABLE_ID] = None
-                    did_unbind = True
-        options = dict(coord.options)
-        options[CONF_BINDING_GROUPS] = groups
-        options.pop(CONF_SOURCE_ENTITIES, None)
-        hass.config_entries.async_update_entry(coord.entry, options=options)
-        # 纯映射：解绑仅清除 实体→耗材 映射（实体仍留分组监控，触发态不变）。
-        # 并入基线（内存 + 持久化）防止重载误报通知；不立即刷新 → 解绑动作
-        # 本身不生成待办/通知。
-        coord.sync_alert_baseline()
-        removed.append(
-            {
-                "entry_type": coord.cons_type,
-                "consumable_id": unbound_cid,
-            }
-        )
-    if not did_unbind:
+    # 仅从独立绑定层删除该实体的映射；不触碰任何类型条目的 options，
+    removed_cid = bindings.get_binding(hass, entity_id)
+    did = await bindings.async_remove_binding(hass, entity_id)
+    if not did:
         raise ServiceValidationError(
             f"未找到实体 {entity_id} 的耗材绑定关系"
         )
     return {
         "entity_id": entity_id,
-        "unbound_from": removed,
-        "unbound_count": len(removed),
+        "unbound_from": (
+            [{"consumable_id": removed_cid}] if removed_cid else []
+        ),
+        "unbound_count": 1 if removed_cid else 0,
     }
 
 # ---- 服务：添加耗材 / 设备映射（写入用户库，本地覆盖层） ----
