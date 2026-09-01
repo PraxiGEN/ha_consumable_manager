@@ -30,13 +30,13 @@ from .const import (
     CONF_GROUP_NAME, GROUP_KIND_BINDING, GROUP_KIND_CUSTOM,
     CONF_SELECTED_GROUP, CONF_REMOVE_GROUPS,
     CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR, CONF_THRESHOLD_TYPE,
-    CONF_THRESHOLD_UNIT, CONF_UNIT, DEFAULT_THRESHOLD,
+    CONF_THRESHOLD_UNIT, CONF_UNIT, DEFAULT_THRESHOLD, CONF_LIFESPAN, CONF_LIFESPAN_UNIT, custom_consumable_entity_id,
     DEFAULT_THRESHOLD_TYPE, DEFAULT_THRESHOLD_UNIT, ENTRY_SORT_PREFIXES,
     ENTRY_TYPE_CUSTOM, ENTRY_TYPE_NOTIFICATION, ENTRY_TYPE_STOCK,
     CONF_TYPE_KEY, CONF_TYPE_NAME_ZH, CONF_TYPE_ICON, CONF_TYPE_THRESHOLD_TYPE,
     CONF_TYPE_THRESHOLD, CONF_TYPE_THRESHOLD_UNIT, OPERATORS,
     THRESHOLD_DEFAULT_OPERATOR, THRESHOLD_TYPES, THRESHOLD_UNIT_OPTIONS,
-    THRESHOLD_TYPE_USED_TIME, OPERATOR_GREATER_THAN, UNIT_DAYS,
+    UNIT_DAYS, THRESHOLD_TYPE_REMAINING_TIME, UNIT_HOURS, UNIT_MINUTES,
 )
 from .library import Consumable, ID_PATTERN, Library, LibraryError
 from .user_library import (
@@ -44,6 +44,7 @@ from .user_library import (
     async_write_user_consumable,
     async_write_user_type,
 )
+from . import bindings
 
 # 选择器模式常量（避免重复引用长路径）
 _DROPDOWN = selector.SelectSelectorMode.DROPDOWN
@@ -676,7 +677,7 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
     async def async_step_custom_entity(self,
         user_input: dict[str, Any] | None = None, idx: int | None = None,
     ) -> ConfigFlowResult:
-        """自定义耗材实体：名称 + 添加时间 + 已使用时长阈值（自建数据 → 诊断实体）。"""
+        """自定义耗材实体：上=生成倒计时数据实体的数据，下=条目级阈值（同分组）。"""
         errors: dict[str, str] = {}
         if idx is not None:
             self._group_edit_idx = idx
@@ -694,50 +695,109 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
         consumable_options = self._consumable_options(
             self._consumables_for_type(library, cons_type), type_labels, language)
 
+        # 编辑时回填已绑定耗材（绑定存于 bindings Store 层，不在 group options）
+        default_consumable = ""
+        if editing:
+            default_consumable = bindings.get_binding(
+                self.hass,
+                custom_consumable_entity_id(
+                    self.config_entry.entry_id, group.get(CONF_GROUP_ID, "")),
+            ) or ""
+        # 回填值必须仍是合法选项才可作为 default：未绑定（空串）或耗材已删除
+        # （悬空引用）若塞进 default，用户直接提交会被 selector 拒绝并报
+        # "value must be one of [...]"。不合法时不给默认值，保存即清除。
+        valid_default = bool(default_consumable) and any(
+            opt["value"] == default_consumable for opt in consumable_options)
+        consumable_field = (
+            vol.Optional(CONF_CONSUMABLE_ID, default=default_consumable)
+            if valid_default
+            else vol.Optional(CONF_CONSUMABLE_ID)
+        )
+
         if user_input is not None:
             name = str(user_input.get(CONF_GROUP_NAME) or "").strip()
             added_at = user_input.get(CONF_ADDED_AT)
+            lifespan = user_input.get(CONF_LIFESPAN)
             if not name:
                 errors["name"] = "required"
             elif not added_at:
                 errors["added_at"] = "required"
+            elif lifespan in (None, ""):
+                errors["lifespan"] = "required"
             else:
+                gid = group.get(CONF_GROUP_ID) or uuid4().hex[:8]
+                synthetic_id = custom_consumable_entity_id(
+                    self.config_entry.entry_id, gid)
                 new_group: dict[str, Any] = {
-                    CONF_GROUP_ID: group.get(CONF_GROUP_ID) or uuid4().hex[:8],
+                    CONF_GROUP_ID: gid,
                     CONF_GROUP_NAME: name,
                     CONF_GROUP_KIND: GROUP_KIND_CUSTOM,
-                    CONF_CONSUMABLE_ID: user_input.get(CONF_CONSUMABLE_ID) or None,
                     CONF_ADDED_AT: added_at,
-                    # 自定义分组阈值恒为「已使用时长」，大于阈值即触发
-                    CONF_THRESHOLD_TYPE: THRESHOLD_TYPE_USED_TIME,
-                    CONF_THRESHOLD: user_input[CONF_THRESHOLD],
-                    CONF_THRESHOLD_UNIT: user_input[CONF_THRESHOLD_UNIT],
-                    CONF_THRESHOLD_OPERATOR: OPERATOR_GREATER_THAN,
+                    CONF_LIFESPAN: lifespan,
+                    CONF_LIFESPAN_UNIT: user_input[CONF_LIFESPAN_UNIT],
                 }
+                # 下部分：覆盖条目级阈值（与「添加分组」同构），未勾选则不写
+                if user_input.get("override_threshold"):
+                    for k in (CONF_THRESHOLD_TYPE, CONF_THRESHOLD,
+                              CONF_THRESHOLD_UNIT, CONF_THRESHOLD_OPERATOR):
+                        new_group[k] = user_input[k]
                 if editing:
                     groups[self._group_edit_idx] = new_group
                 else:
                     groups.append(new_group)
-                return self._save_groups(groups)
+                result = self._save_groups(groups)
+                # 绑定耗材：写 bindings Store 层（key = 合成数据实体 id），
+                # 实体生成后 bind_entity 服务也能按此 id 重绑 / 解绑。
+                await self._sync_custom_binding(
+                    synthetic_id, user_input.get(CONF_CONSUMABLE_ID) or None)
+                return result
 
         default_name = group.get(CONF_GROUP_NAME, self.config_entry.title)
         default_added_at = group.get(
             CONF_ADDED_AT, datetime.date.today().isoformat())
-        default_threshold = group.get(CONF_THRESHOLD, 180)
-        default_unit = group.get(CONF_THRESHOLD_UNIT, UNIT_DAYS)
+        default_lifespan = group.get(CONF_LIFESPAN, 180)
+        default_lifespan_unit = group.get(CONF_LIFESPAN_UNIT, UNIT_DAYS)
+
+        # 阈值默认值：新建自定义组默认开启覆盖、剩余时间 < 0（到期提醒）
+        override_on = bool(
+            group.get(CONF_THRESHOLD) is not None
+            or group.get(CONF_THRESHOLD_TYPE) is not None
+            or group.get(CONF_THRESHOLD_UNIT) is not None
+            or group.get(CONF_THRESHOLD_OPERATOR) is not None
+        )
+        if not editing:
+            override_on = True
+            d_type = THRESHOLD_TYPE_REMAINING_TIME
+            d_val = 0
+            d_unit = default_lifespan_unit
+        else:
+            d_type, d_val, d_unit = await self._threshold_defaults()
+        t_type = group.get(CONF_THRESHOLD_TYPE, d_type)
+        t_val = group.get(CONF_THRESHOLD, d_val)
+        t_unit = group.get(CONF_THRESHOLD_UNIT, d_unit)
+        t_op = group.get(
+            CONF_THRESHOLD_OPERATOR, THRESHOLD_DEFAULT_OPERATOR[t_type])
         return self.async_show_form(
             step_id="custom_entity",
             data_schema=vol.Schema({
                 vol.Required(CONF_GROUP_NAME, default=default_name): _text(),
-                vol.Optional(CONF_CONSUMABLE_ID,
-                             default=group.get(CONF_CONSUMABLE_ID) or ""):
+                consumable_field:
                     _sel(consumable_options),
                 vol.Required(CONF_ADDED_AT, default=default_added_at):
                     selector.DateSelector(),
-                vol.Required(CONF_THRESHOLD, default=default_threshold):
+                vol.Required(CONF_LIFESPAN, default=default_lifespan):
                     _num(step="any"),
-                vol.Required(CONF_THRESHOLD_UNIT, default=default_unit):
+                vol.Required(CONF_LIFESPAN_UNIT, default=default_lifespan_unit):
+                    _sel(_opt_pairs((UNIT_DAYS, UNIT_HOURS, UNIT_MINUTES)),
+                         "threshold_unit"),
+                vol.Optional("override_threshold", default=override_on): _bool(),
+                vol.Optional(CONF_THRESHOLD_TYPE, default=t_type):
+                    _sel(_opt_pairs(THRESHOLD_TYPES), "threshold_type"),
+                vol.Optional(CONF_THRESHOLD, default=t_val): _num(step="any"),
+                vol.Optional(CONF_THRESHOLD_UNIT, default=t_unit):
                     _sel(_opt_pairs(THRESHOLD_UNIT_OPTIONS), "threshold_unit"),
+                vol.Optional(CONF_THRESHOLD_OPERATOR, default=t_op):
+                    _sel(_opt_pairs(OPERATORS), "threshold_operator"),
             }),
             errors=errors,
         )
@@ -766,6 +826,19 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             options.pop(CONF_BINDING_GROUPS, None)
             options.pop(CONF_SOURCE_ENTITIES, None)
         return self._save(options)
+
+    async def _sync_custom_binding(self,
+            entity_id: str, consumable_id: str | None) -> None:
+        """自定义耗材实体创建/编辑后，把「绑定耗材」写入 bindings Store 层。
+
+        与实体组共用同一 bindings 层：创建时即按合成数据实体 id 写入，
+        用户之后也可用 bind_entity 服务按此 id 重绑 / 解绑。
+        """
+        if consumable_id:
+            await bindings.async_set_binding(
+                self.hass, entity_id, consumable_id)
+        else:
+            await bindings.async_remove_binding(self.hass, entity_id)
 
     def _group_options(self) -> list[dict[str, str]]:
         """分组下拉（label = 分组名，value = group_id）。"""
