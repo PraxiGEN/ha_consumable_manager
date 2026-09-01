@@ -13,6 +13,7 @@ from .const import (
     CONF_NOTIFY_SCHEDULE_TIME, ENTRY_TYPE_NOTIFICATION,
     NOTIFY_MODE_SCHEDULED, NOTIFY_TEXTS, TODO_KINDS,
 )
+from . import bindings
 from .coordinator import ConsumableManagerData, build_coordinator
 from .notifications import (
     _scheduled_override,
@@ -108,7 +109,10 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant,
     entry: ConsumableManagerConfigEntry,
 ) -> bool:
-    """设置条目：建协调器 → 首次刷新 → 记签名 → 注册监听 → 转发平台。"""
+    """设置条目：预热绑定缓存 → 建协调器 → 首次刷新 → 记签名 → 注册监听 → 转发平台。"""
+    # 绑定缓存必须在建协调器 / 实体属性计算之前异步预热：否则首次
+    # get_binding 会落在事件循环内同步读盘，触发 HA 的 blocking call 告警。
+    await bindings.async_prime(hass)
     labels = _async_labels(hass)
     # 类型元数据（内置库+用户库合并；自定义类型不在库中时为 None）
     library = await async_load_library(hass)

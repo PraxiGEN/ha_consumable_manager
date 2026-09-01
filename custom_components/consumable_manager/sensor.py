@@ -21,7 +21,13 @@ from .const import (
     CONF_ITEM_ID,
     CONF_ITEM_NAME,
     CONF_ITEM_TYPE,
+    CONF_LIFESPAN_UNIT,
     CONF_UNIT,
+    GROUP_KIND_CUSTOM,
+    UNIT_DAYS,
+    UNIT_HOURS,
+    UNIT_MINUTES,
+    custom_consumable_entity_id,
 )
 from .coordinator import (
     REPLACE_STATES,
@@ -38,6 +44,13 @@ _ICON_SHORTAGE = "mdi:package-variant-closed-remove"
 _ICON_BY_STATE: dict[str, str] = {
     STATE_OK: "mdi:check-circle-outline",
     STATE_LOW_STOCK: "mdi:archive-alert-outline",
+}
+
+# 寿命单位 → 实体 unit_of_measurement 标准符号（locale 无关，不拼中文）
+_LIFESPAN_UNIT_TO_UOM: dict[str, str] = {
+    UNIT_DAYS: "d",
+    UNIT_HOURS: "h",
+    UNIT_MINUTES: "min",
 }
 
 # ---- 静态实体描述符 ----
@@ -237,6 +250,57 @@ class GroupDataSensor(
             "bound_entity_data": bound,
         }
 
+class CustomConsumableSensor(
+    CoordinatorEntity[ConsumableTypeCoordinator], SensorEntity
+):
+    """自定义耗材实体的倒计时数据传感器：状态 = 剩余时间，纯数值 + 单位。"""
+
+    _attr_has_entity_name = True
+
+    def __init__(
+        self,
+        coordinator: ConsumableTypeCoordinator,
+        group: dict[str, Any],
+    ) -> None:
+        super().__init__(coordinator)
+        self.entity_description = GROUP_DATA_DESCRIPTION
+        self._group = group
+        group_id = group.get(CONF_GROUP_ID, "default")
+        group_name = group.get(CONF_GROUP_NAME) or "默认"
+        self._attr_unique_id = f"{coordinator.entry_id}_customdata_{group_id}"
+        # 强制确定性 entity_id（供 bindings Store 与 bind_entity 服务使用）
+        self._attr_entity_id = custom_consumable_entity_id(
+            coordinator.entry_id, group_id)
+        self._attr_device_info = coordinator.device_info
+        # 实体名 = 分组名 + 「数据」后缀，与 GroupDataSensor 命名规则一致
+        self._attr_name = f"{group_name}数据"
+
+    @property
+    def native_value(self) -> float | None:
+        return self.coordinator.custom_remaining_in_unit(self._group)
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        unit = self._group.get(CONF_LIFESPAN_UNIT, UNIT_DAYS)
+        return _LIFESPAN_UNIT_TO_UOM.get(unit, "d")
+
+    @property
+    def device_class(self) -> str | None:
+        return SensorDeviceClass.DURATION
+
+    @property
+    def icon(self) -> str:
+        return self.coordinator.type_icon
+
+    @property
+    def extra_state_attributes(self) -> dict:
+        return {
+            "group": self._group.get(CONF_GROUP_NAME),
+            "consumable_type": self.coordinator.cons_type,
+            "kind": GROUP_KIND_CUSTOM,
+        }
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConsumableManagerConfigEntry,
@@ -282,8 +346,12 @@ async def async_setup_entry(
         entities.append(
             ReplaceStatusSensor(coordinator, REPLACE_STATUS_DESCRIPTION, group)
         )
-        # 分组数据传感器仅对有绑定实体的非自定义分组生成
-        if not coordinator._group_is_custom(group):
+        # 绑定实体分组 → 分组数据传感器；自定义耗材实体分组 → 倒计时数据传感器
+        if coordinator._group_is_custom(group):
+            entities.append(
+                CustomConsumableSensor(coordinator, group)
+            )
+        else:
             entities.append(
                 GroupDataSensor(coordinator, GROUP_DATA_DESCRIPTION, group)
             )

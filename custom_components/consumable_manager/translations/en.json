@@ -177,13 +177,18 @@
       },
       "custom_entity": {
         "title": "Custom consumable entity",
-        "description": "Build one consumable record: name (defaults to the current consumable entry), optionally bind a consumable of this type, added/replaced date, and an elapsed-used-time threshold. Saving creates a corresponding replace-status diagnostic entity. Binding a consumable makes the todo and diagnostic entity show that specific consumable.",
+        "description": "Build a countdown data entity: name, optional bound consumable, added/replaced date and suggested lifespan. The diagnostic entity judges against a freely configured threshold (same as grouping).",
         "data": {
           "name": "Name",
           "consumable_id": "Bind consumable",
           "added_at": "Added date",
-          "threshold": "Lifetime threshold",
-          "threshold_unit": "Unit"
+          "lifespan": "Suggested lifespan",
+          "lifespan_unit": "Lifespan unit",
+          "override_threshold": "Override entry-level threshold",
+          "threshold_type": "Threshold type",
+          "threshold": "Threshold",
+          "threshold_unit": "Unit",
+          "threshold_operator": "Comparison"
         }
       },
       "select_group": {
