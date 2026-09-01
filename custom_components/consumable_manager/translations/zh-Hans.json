@@ -177,13 +177,18 @@
       },
       "custom_entity": {
         "title": "自定义耗材实体",
-        "description": "自建一条耗材数据：名称（默认即当前耗材条目）、可选绑定本类型耗材、添加/更换时间，以及已使用时长阈值；保存后直接生成对应的更换状态诊断实体。绑定耗材后，待办与诊断实体会显示该具体耗材。",
+        "description": "构建一个倒计时数据实体：名称、可选绑定耗材、添加/更换时间与建议寿命。诊断实体按自由配置的阈值判定（与添加分组一致）。",
         "data": {
           "name": "名称",
           "consumable_id": "绑定耗材",
           "added_at": "添加时间",
-          "threshold": "寿命阈值",
-          "threshold_unit": "单位"
+          "lifespan": "建议寿命",
+          "lifespan_unit": "寿命单位",
+          "override_threshold": "覆盖条目级阈值",
+          "threshold_type": "阈值类型",
+          "threshold": "阈值",
+          "threshold_unit": "单位",
+          "threshold_operator": "计算方式"
         }
       },
       "select_group": {
