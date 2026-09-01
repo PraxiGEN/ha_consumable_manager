@@ -1,6 +1,7 @@
 """耗材管理器 常量平台。"""
 
 import logging
+import re
 from typing import Final
 
 from homeassistant.const import Platform
@@ -36,8 +37,18 @@ CONF_REMOVE_GROUPS: Final = "remove_groups"    # 删除分组（多选，value=g
 # 自定义耗材实体分组（不绑定实体，按 added_at 计时，直接生成诊断实体）
 CONF_GROUP_KIND: Final = "kind"        # 分组类别：binding（绑定实体）/ custom（自定义耗材实体）
 CONF_ADDED_AT: Final = "added_at"      # 添加/更换时间（ISO 日期，计时起点）
+CONF_LIFESPAN: Final = "lifespan"      # 建议寿命（倒计时跨度，配合 lifespan_unit）
+CONF_LIFESPAN_UNIT: Final = "lifespan_unit"  # 寿命单位（天/小时/分钟）
 GROUP_KIND_BINDING: Final = "binding"  # 绑定实体分组（默认）
 GROUP_KIND_CUSTOM: Final = "custom_consumable_entity"    # 自定义耗材实体分组（自建数据 → 一个诊断实体）
+
+def _slug_id(value: str) -> str:
+    """把任意字符串规范为 entity_id 安全片段（小写、非字母数字下划线 → 下划线）。"""
+    return re.sub(r"[^a-z0-9_]", "_", str(value).lower())
+
+def custom_consumable_entity_id(entry_id: str, group_id: str) -> str:
+    """自定义耗材实体分组的合成数据实体 entity_id（确定性、跨模块一致）。"""
+    return f"sensor.{DOMAIN}_{_slug_id(entry_id)}_{_slug_id(group_id)}_custom"
 
 # ---- 耗材类型条目：阈值配置 ----
 CONF_THRESHOLD_TYPE: Final = "threshold_type"
