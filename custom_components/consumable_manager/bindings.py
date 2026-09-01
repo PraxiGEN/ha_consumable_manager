@@ -15,6 +15,8 @@ STORAGE_VERSION = 1
 # 按 hass config 路径分键，避免多实例（如测试）串味
 _STORES: dict[str, Store] = {}
 _BINDINGS_CACHE: dict[str, dict[str, str]] = {}
+# 已异步预热过的 hass（见 async_prime）：预热后同步读只走内存，不碰磁盘
+_PRIMED: set[str] = set()
 
 def _cache_key(hass: HomeAssistant) -> str:
     """缓存分键：用 config 路径（含 Store key）保证多 hass 实例隔离。"""
@@ -72,20 +74,40 @@ async def async_load_bindings(hass: HomeAssistant) -> dict[str, str]:
     raw = await _store(hass).async_load()
     data = _parse_raw(raw)
     _BINDINGS_CACHE[_cache_key(hass)] = data
+    _PRIMED.add(_cache_key(hass))
     return data
+
+async def async_prime(hass: HomeAssistant) -> None:
+    """异步预热绑定缓存（每个 hass 仅一次）。"""
+    key = _cache_key(hass)
+    if key in _PRIMED:
+        return
+    await async_load_bindings(hass)
+
+def is_primed(hass: HomeAssistant) -> bool:
+    """当前 hass 的绑定缓存是否已完成异步预热。"""
+    return _cache_key(hass) in _PRIMED
+
+async def _async_current(hass: HomeAssistant) -> dict[str, str]:
+    """取当前全部绑定（已预热走内存，否则异步加载；全程不阻塞事件循环）。"""
+    key = _cache_key(hass)
+    cached = _BINDINGS_CACHE.get(key)
+    if key in _PRIMED and cached is not None:
+        return cached
+    return await async_load_bindings(hass)
 
 async def async_set_binding(
     hass: HomeAssistant, entity_id: str, consumable_id: str
 ) -> None:
     """建立/更新一条实体↔耗材绑定（经 Store 原子持久化）。"""
-    data = dict(_cache_get(hass))
+    data = dict(await _async_current(hass))
     data[entity_id] = consumable_id
     _BINDINGS_CACHE[_cache_key(hass)] = data
     await _store(hass).async_save(data)
 
 async def async_remove_binding(hass: HomeAssistant, entity_id: str) -> bool:
     """删除一条绑定；返回是否真的删除了。"""
-    data = dict(_cache_get(hass))
+    data = dict(await _async_current(hass))
     if entity_id in data:
         del data[entity_id]
         _BINDINGS_CACHE[_cache_key(hass)] = data
