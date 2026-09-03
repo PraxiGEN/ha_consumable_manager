@@ -1,22 +1,28 @@
-# 用户库贡献自动组装
+# 用户库贡献自动组装（PR 模式）
 #
 # 流程：
-#   1. 用户把本地用户库原样提交为 contributions/<你的GitHub用户名>/user_library.json，
-#      PR 到 contributions 分支（不同用户不同目录，并行 PR 不冲突）；
-#   2. 本工作流在 contributions 分支上自动处理所有草稿目录：
-#      - 逐个运行摄入工具（锚点去重裁决 / 多语言拆解进 names.json / 排序归位 / 原子写）
-#      - 组装完成后移除整个 contributions/ 目录（先加后删：文件相对主分支净变化为零）
-#      - 组装结果提交回 contributions 分支；
-#   3. 维护者审查 contributions 后手动合入主分支（主分支只接受这一步合入，
-#      且净效果仅为 library/ 变更——用户库草稿不会进入主分支）。
+#   1. 贡献者在自己的分支（同仓库）放 contributions/<GitHub用户名>/user_library.json，
+#      向 main 提 PR（不同用户不同目录，并行 PR 不冲突）；
+#   2. 本工作流在 PR 上下文自动处理草稿：
+#      - 仅运行仓库自带（main 上的）摄入工具：先把整个集成包恢复成 main 版本，
+#        草稿只作为数据喂入，绝不执行 PR 内的任何代码（防供应链风险）；
+#      - 恢复集成包同时把 library/ 对齐成 main 最新，组装永远基于最新主分支，
+#        不再有「长期 contributions 分支滞后于 main」的问题；
+#      - 组装完成后移除整个 contributions/ 目录；
+#      - 组装结果 + 草稿删除一起提交回 PR 头；
+#   3. 维护者审查后合并 PR 进 main：净效果仅为 library/ 变更，草稿不进主分支。
 #
-# 防循环：仅当 contributions/**/user_library.json 变化时触发（paths 过滤）；
-# 自动组装只改动 library/ 与移除草稿目录，无新内容时不提交，不会再次触发。
+# 防循环：paths 过滤只认 contributions/**/user_library.json；摄入后该文件被删除，
+#         回写提交不再包含它，故不会再次触发；即便触发，无草稿即空操作、不提交。
+#
+# 分支模型说明：本工作流面向「同仓库分支发起的 PR」（贡献者对仓库有写权限、
+# 或维护者从分支取）。fork PR 因 GitHub 安全限制无法由本工作流回推，
+# 需在 fork 侧自行同步已组装的 library/ 后再合入。
 name: Ingest user-library contributions
 
 on:
-  push:
-    branches: [contributions]
+  pull_request_target:
+    branches: [main]
     paths:
       - "contributions/**/user_library.json"
 
@@ -27,8 +33,18 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout PR head
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Restore trusted integration code from main
+        # 安全 + 同步：只跑仓库自带的摄入逻辑，不执行 PR 内代码；
+        # 同时把 library/ 恢复成 main 最新，确保组装永远基于最新主分支。
+        run: |
+          git fetch origin main
+          git checkout origin/main -- custom_components/consumable_manager/
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,35 +54,25 @@ jobs:
       - name: Baseline check (built-in library must be clean)
         run: python tools/ingest.py --check
 
-      - name: Ingest all user-library drafts
-        run: |
-          found=0
-          for draft in contributions/*/user_library.json; do
-            [ -f "$draft" ] || continue
-            found=1
-            echo "== Ingesting $draft =="
-            python tools/ingest.py --ingest \
-              --user-lib "$draft" \
-              --library custom_components/consumable_manager/library
-          done
-          if [ "$found" = 0 ]; then
-            echo "No draft files under contributions/*/."
-          fi
+      - name: Ingest all drafts under contributions/
+        # 工具只读取 PR 中的 contributions/ 文件夹（contributions/*/user_library.json）
+        run: python tools/ingest.py --ingest --verbose \
+          --library custom_components/consumable_manager/library
 
       - name: Post-ingest check
         run: python tools/ingest.py --check
 
-      - name: Commit assembled library back to contributions
+      - name: Commit assembled library back to PR head
         run: |
           git add custom_components/consumable_manager/library/
           # 组装后移除全部草稿目录（先加后删）：文件相对 main 净变化为零，
-          # 手动合入 main 时不会把用户库带进主分支（git merge 是全量 diff）。
+          # 合并进 main 时不会把用户库带进主分支（git merge 是全量 diff）。
           git rm -rq --ignore-unmatch contributions/ 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No changes (nothing new to ingest)."
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -m "[skip ci] Ingest user-library contributions (drafts removed after assembly)"
-            git push
+            exit 0
           fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore: ingest user-library contributions (drafts removed after assembly)"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
