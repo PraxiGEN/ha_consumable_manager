@@ -23,21 +23,28 @@
 **摄入工具只读取 git 分支中的 `contributions/` 文件夹，不在本地使用。**
 贡献流程中没有任何本地运行工具的环节：
 
-1. Fork 并克隆本仓库。
+1. Fork 并克隆本仓库（对仓库有写权限者也可直接在仓库内建分支）。
 2. 把你在 Home Assistant 界面 / 服务中添加的内容（本地
    `config/.consumable_manager/user_library.json`）复制为
    `contributions/<你的GitHub用户名>/user_library.json`。
    每个贡献者使用自己的目录，**并行 PR 不会冲突**。
    `name` 可填多语言 dict，如 `{"zh-Hans": "…", "en": "…"}`。
-3. PR 到 `contributions` 分支，只提交你自己目录下的 `user_library.json`。
-4. **之后全自动**：GitHub Actions 在分支上运行摄入工具——只读取
-   `contributions/` 文件夹下的全部草稿（`*/user_library.json`），
+3. 向 `main` 分支提 PR（target = `main`），只提交你自己目录下的
+   `user_library.json`。
+4. **之后全自动**：GitHub Actions 在 PR 上运行摄入工具
+   （`pull_request_target`，仅运行仓库自带的摄入逻辑、不执行 PR 内代码）
+   ——只读取 `contributions/` 文件夹下的全部草稿（`*/user_library.json`），
    新增条目合并进 `library/`（多语言拆解进 `names.json`）、排序归位、
    同锚点冲突项标记人工裁决（不覆盖），组装后移除整个 `contributions/`
-   目录并提交回 `contributions` 分支。
-5. 维护者审查组装结果后，将 `contributions` 分支合入主分支。
-   主分支的净变化仅为 `library/`——内置库始终保持
+   目录，并把组装结果**提交回你的 PR 分支**。
+5. 维护者审查组装结果后，合并该 PR 进 `main`。
+   合并的净变化仅为 `library/`——内置库始终保持
    「已检查、已排序、无冲突、无草稿」状态。
+
+注意：自动回推仅对**同仓库分支**的 PR 生效（贡献者对仓库有写权限、
+或维护者从分支取）。fork PR 受 GitHub 安全限制无法由工作流回推——
+此时校验仍会运行，但组装后的 `library/` 需贡献者或维护者在 fork 侧
+自行同步后再合入。
 
 注意：`user_library.json` 是公开仓库中的文件，提交前请自行检查 `meta`
 等字段，移除任何不想公开的个人信息。
@@ -116,24 +123,32 @@ JSON files automatically.
 it is never used locally.** No step of the contribution flow runs anything on
 your machine:
 
-1. Fork and clone this repo.
+1. Fork and clone this repo (or push a branch within the repo if you have
+   write access).
 2. Copy what you added via the Home Assistant UI / services (your local
    `config/.consumable_manager/user_library.json`) to
    `contributions/<your GitHub username>/user_library.json`.
    Each contributor has their own directory, so **parallel PRs never conflict**.
    `name` may be a locale dict, e.g. `{"zh-Hans": "…", "en": "…"}`.
-3. Open a PR to the `contributions` branch, touching only your own
+3. Open a PR to `main` (target = `main`), touching only your own
    `user_library.json`.
-4. **Everything after that is automatic**: GitHub Actions runs the ingest tool
-   on the branch — it reads only the drafts under the `contributions/` folder
-   (`*/user_library.json`), merges new entries into `library/`
-   (localization split into `names.json`), re-sorts everything, flags
-   same-anchor conflicts for human decision (never overwrites), then removes
-   the whole `contributions/` directory and commits the assembled result back
-   to the `contributions` branch.
-5. Maintainers review the assembled result and merge the `contributions`
-   branch into main. The net change on main is purely `library/` — the
-   built-in library always stays checked / sorted / conflict-free / draft-free.
+4. **Everything after that is automatic**: GitHub Actions runs on the PR
+   (`pull_request_target` — it runs only the repo's own ingest tool and never
+   executes code from your PR). It reads only the drafts under the
+   `contributions/` folder (`*/user_library.json`), merges new entries into
+   `library/` (localization split into `names.json`), re-sorts everything,
+   flags same-anchor conflicts for human decision (never overwrites), then
+   removes the whole `contributions/` directory and commits the assembled
+   result back to **your PR branch**.
+5. Maintainers review the assembled result and merge the PR into main.
+   The net change on main is purely `library/` — the built-in library always
+   stays checked / sorted / conflict-free / draft-free.
+
+Note: automatic push-back only works for PRs opened from a **branch in this
+repo** (contributor has write access, or the maintainer takes a branch).
+Fork PRs are blocked by GitHub's security model from being pushed back to —
+validation still runs, but the assembled `library/` must be synced manually
+on the fork side before merging.
 
 Note: `user_library.json` lives in a public repo — review `meta` and other
 fields before submitting, and remove anything you don't want public.
