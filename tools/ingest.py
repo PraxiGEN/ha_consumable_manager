@@ -23,13 +23,11 @@ from typing import Any
 #   <repo>/contributions/<用户名>/user_library.json          分支中的贡献草稿
 _TOOLS_DIR = Path(__file__).resolve().parent
 
-
 def _locate_package() -> Path:
     candidate = _TOOLS_DIR.parent / "custom_components" / "consumable_manager"
     if (candidate / "library").is_dir():
         return candidate
     return _TOOLS_DIR.parent
-
 
 PACKAGE_ROOT = _locate_package()
 DEFAULT_LIBRARY = PACKAGE_ROOT / "library"
@@ -80,12 +78,9 @@ except ImportError:
         parse_consumable,
     )
 
-
 # ---- 原始数据读写 ----
-
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
-
 
 def _write_atomic(path: Path, data: Any) -> None:
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -93,7 +88,6 @@ def _write_atomic(path: Path, data: Any) -> None:
         json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     os.replace(tmp, path)
-
 
 def load_raw_library(root: Path) -> dict[str, Any]:
     """读内置库三个文件的原始 JSON（index / consumables / names）。"""
@@ -103,28 +97,21 @@ def load_raw_library(root: Path) -> dict[str, Any]:
         "names": _read_json(root / "names.json"),
     }
 
-
 # ---- 排序规范 ----
-
 def sort_types(raw_types: dict[str, Any]) -> dict[str, Any]:
     return dict(sorted(raw_types.items()))
-
 
 def sort_consumables(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """按 type 分组 + 组内 id 字母序。"""
     return sorted(items, key=lambda item: (item.get("type", ""), item.get("id", "")))
 
-
 def sort_names(names: dict[str, Any]) -> dict[str, Any]:
     return {section: dict(sorted(section_map.items())) if isinstance(section_map, dict) else section_map
             for section, section_map in names.items()}
 
-
 # ---- 锚点与内容比较 ----
-
 def _consumable_anchor(item: dict[str, Any]) -> tuple[str, str]:
     return (str(item.get("type", "")).lower(), str(item.get("model", "")).strip().lower())
-
 
 def _plain_name(value: Any) -> str:
     """数据文件 name 兜底：dict 取 en 或首语言；plain 原样。"""
@@ -135,6 +122,15 @@ def _plain_name(value: Any) -> str:
         return next(iter(value.values()), "")
     return str(value or "")
 
+def _is_ascii(value: Any) -> bool:
+    """字符串是否纯 ASCII；非字符串（数字等）按 True（不在此校验）。"""
+    if not isinstance(value, str):
+        return True
+    try:
+        value.encode("ascii")
+        return True
+    except UnicodeEncodeError:
+        return False
 
 def _content_same(a: dict[str, Any], b: dict[str, Any]) -> bool:
     """同锚点内容是否一致（name 经兜底规范化后比较）。"""
@@ -144,7 +140,6 @@ def _content_same(a: dict[str, Any], b: dict[str, Any]) -> bool:
     if _plain_name(a.get("name")) != _plain_name(b.get("name")):
         return False
     return (a.get("meta") or {}) == (b.get("meta") or {})
-
 
 def _type_content_same(a: dict[str, Any], b: dict[str, Any]) -> bool:
     """类型条目（锚点 = key）内容是否一致。"""
@@ -156,9 +151,7 @@ def _type_content_same(a: dict[str, Any], b: dict[str, Any]) -> bool:
         and a.get("default_threshold_unit") == b.get("default_threshold_unit")
     )
 
-
 # ---- 检查（--check，CI 用）----
-
 def check_library(root: Path) -> list[str]:
     """内置库检查：字段/引用完整性、排序规范、names 覆盖。返回问题列表。"""
     problems: list[str] = []
@@ -192,9 +185,111 @@ def check_library(root: Path) -> list[str]:
             problems.append(f"提示: 耗材 {item.get('id')} 缺少 names.consumables 多语言")
     return problems
 
+# ---- 草稿验证（--validate-draft，CI 用）----
+def _expected_schema(root: Path) -> int:
+    """内置库当前 schema_version（草稿必须与之匹配）。"""
+    try:
+        idx = _read_json(root / "index.json")
+        return int(idx.get("schema_version", 1))
+    except Exception:
+        return 1
+
+def validate_draft(
+    user_lib_path: Path, expected_schema: int, builtin_types: set[str]
+) -> list[str]:
+    """校验单份草稿是否符合当前合并规则。返回问题列表（非空=不合格）。"""
+    problems: list[str] = []
+    try:
+        user = _read_json(user_lib_path)
+    except Exception as exc:
+        return [f"JSON 解析失败: {exc}"]
+    if not isinstance(user, dict):
+        return ["根应为 JSON 对象"]
+
+    # 1. schema_version 必须与内置库当前版本一致
+    sv = user.get("schema_version")
+    if sv != expected_schema:
+        problems.append(
+            f"schema_version 应为 {expected_schema}（当前内置库版本），实际 {sv!r}"
+        )
+
+    # 2. 已废弃字段
+    for forbidden in ("devices",):
+        if forbidden in user:
+            problems.append(f"顶层字段 '{forbidden}' 已废弃，不允许提交")
+
+    # 3. types / consumables 结构
+    types = user.get("types")
+    if types is None:
+        types = {}
+    if not isinstance(types, dict):
+        problems.append("types 应为对象")
+        types = {}
+    consumables = user.get("consumables")
+    if consumables is None:
+        consumables = []
+    if not isinstance(consumables, list):
+        problems.append("consumables 应为数组")
+        consumables = []
+
+    known = set(types) | set(builtin_types)
+    for key, t in types.items():
+        if not isinstance(t, dict):
+            problems.append(f"type {key} 应为对象")
+            continue
+        # 代码/标识字段必须 ASCII（类型键、icon、阈值类型/单位）
+        if not _is_ascii(key):
+            problems.append(f"type 键 {key!r} 含非 ASCII 字符，类型键必须为英文/数字")
+        name = t.get("name")
+        if not name:
+            problems.append(f"type {key} 缺少 name")
+        elif not isinstance(name, (str, dict)):
+            problems.append(f"type {key} 的 name 类型非法（应为字符串或语言对象）")
+        if not t.get("icon"):
+            problems.append(f"type {key} 缺少 icon")
+        elif not _is_ascii(t["icon"]):
+            problems.append(f"type {key} 的 icon 含非 ASCII 字符（应为 mdi:...）")
+        if not _is_ascii(t.get("default_threshold_type") or ""):
+            problems.append(f"type {key} 的 default_threshold_type 含非 ASCII 字符")
+        if not _is_ascii(t.get("default_threshold_unit") or ""):
+            problems.append(f"type {key} 的 default_threshold_unit 含非 ASCII 字符")
+
+    for item in consumables:
+        if not isinstance(item, dict):
+            problems.append("consumable 应为对象")
+            continue
+        cid = item.get("id")
+        ctype = item.get("type")
+        # 代码/标识字段必须 ASCII（id、type 引用）；model/name/unit/meta 按约定豁免
+        if not _is_ascii(cid or ""):
+            problems.append(f"consumable id {cid!r} 含非 ASCII 字符，id 必须为英文/数字")
+        if not _is_ascii(ctype or ""):
+            problems.append(f"consumable type {ctype!r} 含非 ASCII 字符，type 必须为英文/数字")
+        if ctype not in known:
+            problems.append(f"consumable {cid} 引用未知类型 {ctype!r}")
+            continue
+        try:
+            parse_consumable(item, user_lib_path, {k: None for k in known})
+        except LibraryError as exc:
+            problems.append(f"consumable {cid} 校验失败: {exc}")
+    return problems
+
+def validate_drafts(root: Path, contributions_dir: Path) -> dict[str, Any]:
+    """校验 contributions/ 下全部草稿。返回 {drafts:[...], problems:{path:[...]}}。"""
+    report: dict[str, Any] = {"drafts": [], "problems": {}}
+    drafts = (
+        sorted(p for p in contributions_dir.glob(f"*/{DRAFT_FILENAME}") if p.is_file())
+        if contributions_dir.is_dir()
+        else []
+    )
+    expected = _expected_schema(root)
+    builtin_types = set(load_raw_library(root)["index"].get("types", {}))
+    for draft in drafts:
+        report["drafts"].append(str(draft))
+        report["problems"][str(draft)] = validate_draft(draft, expected, builtin_types)
+    return report
 
 # ---- 摄入（--ingest / --dry-run）----
-
 def ingest_user_library(
     root: Path,
     user_lib_path: Path,
@@ -284,19 +379,15 @@ def ingest_user_library(
 
     # 摄入后自检（排序 / 完整性应无问题）
     problems = check_library(root)
-    report["post_check"] = [p for p in problems if not p.startswith("提示:")]
+    report["post_check"] = problems
     return report
-
 
 def ingest_contributions(
     root: Path,
     contributions_dir: Path,
     dry_run: bool = False,
 ) -> dict[str, Any]:
-    """摄入分支 contributions/ 文件夹下的全部草稿（每份 = contributions/<用户名>/user_library.json）。
-
-    只读取该文件夹，不涉及任何本地路径；文件夹缺失或无草稿时为空操作。
-    """
+    """摄入分支 contributions/ 文件夹下的全部草稿（每份 = contributions/<用户名>/user_library.json）。"""
     report: dict[str, Any] = {
         "drafts": [], "added": [], "skipped": [], "conflict": [],
     }
@@ -313,14 +404,12 @@ def ingest_contributions(
         report["conflict"].extend(sub["conflict"])
     if drafts and not dry_run:
         problems = check_library(root)
-        report["post_check"] = [p for p in problems if not p.startswith("提示:")]
+        report["post_check"] = problems
     else:
         report["post_check"] = []
     return report
 
-
 # ---- CLI ----
-
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="贡献草稿 → 内置库 摄入 / 检查工具（仅 CI 使用）"
@@ -330,6 +419,10 @@ def main() -> int:
     group.add_argument(
         "--ingest", action="store_true",
         help="摄入 contributions/ 文件夹下全部草稿（默认）",
+    )
+    group.add_argument(
+        "--validate-draft", action="store_true",
+        help="仅校验 contributions/ 草稿是否符合当前合并规则（不写文件）",
     )
     parser.add_argument("--dry-run", action="store_true", help="只报告，不写文件")
     parser.add_argument("--library", type=Path, default=DEFAULT_LIBRARY)
@@ -342,11 +435,39 @@ def main() -> int:
 
     root = args.library.resolve()
 
+    if args.validate_draft:
+        contributions = args.contributions.resolve()
+        report = validate_drafts(root, contributions)
+        if not report["drafts"]:
+            print(f"{contributions} 下没有草稿，无需验证。")
+            return 0
+        bad = False
+        for draft in report["drafts"]:
+            probs = report["problems"][draft]
+            if probs:
+                bad = True
+                print(f"草稿 {draft} 不符合要求：")
+                for problem in probs:
+                    print(f"  - {problem}")
+            elif args.verbose:
+                print(f"草稿 {draft} 通过校验。")
+        if bad:
+            print("草稿校验未通过，拒绝摄入。")
+            return 1
+        print("全部草稿通过校验，可以摄入。")
+        return 0
+
     if args.check:
         problems = check_library(root)
-        if problems:
+        errors = [p for p in problems if not p.startswith("提示:")]
+        warnings = [p for p in problems if p.startswith("提示:")]
+        if warnings:
+            print("内置库提示（不影响通过，建议补充多语言）：")
+            for problem in warnings:
+                print(f"  - {problem}")
+        if errors:
             print("内置库检查发现问题：")
-            for problem in problems:
+            for problem in errors:
                 print(f"  - {problem}")
             return 1
         print("内置库检查通过（字段 / 引用 / 排序 / names 覆盖）。")
@@ -376,12 +497,15 @@ def main() -> int:
         for item in report["conflict"]:
             print(f"    ! {item}")
     if report["post_check"]:
-        print("  摄入后自检发现问题：")
+        errors = [p for p in report["post_check"] if not p.startswith("提示:")]
+        if errors:
+            print("  摄入后自检发现问题：")
+            for problem in errors:
+                print(f"    - {problem}")
+            return 1
         for problem in report["post_check"]:
-            print(f"    - {problem}")
-        return 1
+            print(f"    · 提示: {problem}（不影响摄入，建议补充多语言）")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

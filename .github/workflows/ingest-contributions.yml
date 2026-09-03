@@ -4,10 +4,10 @@
 #   1. 贡献者在自己的分支（同仓库）放 contributions/<GitHub用户名>/user_library.json，
 #      向 main 提 PR（不同用户不同目录，并行 PR 不冲突）；
 #   2. 本工作流在 PR 上下文自动处理草稿：
-#      - 仅运行仓库自带（main 上的）摄入工具：先把整个集成包恢复成 main 版本，
+#      - 仅运行仓库自带（main 上的）摄入工具代码：只把 tools/ 恢复成 main 版本，
 #        草稿只作为数据喂入，绝不执行 PR 内的任何代码（防供应链风险）；
-#      - 把 library/ 对齐成 main 最新，组装永远基于最新主分支，
-#        不再有「长期 contributions 分支滞后于 main」的问题；
+#        注意：不要覆盖 library/ —— 否则后续检查会误判成「main 老数据」，
+#        而草稿 PR 的 library/ 本就等于 main，组装仍基于最新主分支；
 #      - 组装完成后移除整个 contributions/ 目录；
 #      - 组装结果 + 草稿删除一起提交回 PR 头；
 #   3. 维护者审查后合并 PR 进 main：净效果仅为 library/ 变更，草稿不进主分支。
@@ -39,21 +39,24 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Restore trusted integration code from main
-        # 安全 + 同步：把整个仓库恢复成 main 版本（仅跑仓库自带摄入逻辑、
-        # 不执行 PR 内代码），同时把 library/ 对齐成 main 最新，确保组装
-        # 永远基于最新主分支。草稿 contributions/ 为未跟踪文件，不受影响。
+      - name: Restore trusted ingest tool from main
+        # 安全：只恢复仓库自带（main 上的）摄入工具代码，绝不执行 PR 内代码
+        # （防供应链风险）。不覆盖 library/ —— 草稿 PR 的 library/ 本就等于
+        # main，覆盖反而让后续检查误判成「main 老数据」。
         run: |
           git fetch origin main
-          git checkout origin/main -- .
+          git checkout origin/main -- tools/
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
 
-      - name: Baseline check (built-in library must be clean)
-        run: python tools/ingest.py --check
+      - name: Validate contribution drafts
+        # 真正校验的是 PR 的草稿（contributions/），而非 main 的库；
+        # 草稿不符合当前规则（如旧 schema_version、纯字符串 name、已废弃字段）
+        # 直接失败并指明具体草稿文件，绝不误报成 main 老数据。
+        run: python tools/ingest.py --validate-draft --verbose
 
       - name: Ingest all drafts under contributions/
         # 工具只读取 PR 中的 contributions/ 文件夹（contributions/*/user_library.json）；
