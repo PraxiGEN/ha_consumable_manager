@@ -132,6 +132,24 @@ def _is_ascii(value: Any) -> bool:
     except UnicodeEncodeError:
         return False
 
+def _detect_locale(value: Any) -> str | None:
+    """识别裸字符串 name 的语言，返回应填入 names.json 的 locale 键。
+
+    含 CJK 字符 → 'zh-Hans'；纯 ASCII/拉丁 → 'en'；其他脚本
+    （日/韩/西里尔/阿等）→ None（不猜测，交由人工补充）。
+    """
+    if not isinstance(value, str) or not value.strip():
+        return None
+    has_cjk = any(
+        ("\u4e00" <= ch <= "\u9fff") or ("\u3400" <= ch <= "\u4dbf")
+        for ch in value
+    )
+    if has_cjk:
+        return "zh-Hans"
+    if _is_ascii(value):
+        return "en"
+    return None
+
 def _content_same(a: dict[str, Any], b: dict[str, Any]) -> bool:
     """同锚点内容是否一致（name 经兜底规范化后比较）。"""
     for key in ("id", "type", "model", "unit"):
@@ -183,6 +201,17 @@ def check_library(root: Path) -> list[str]:
     for item in raw["consumables"]:
         if item.get("id") not in names_by_section["consumables"]:
             problems.append(f"提示: 耗材 {item.get('id')} 缺少 names.consumables 多语言")
+    # 未识别语言标记（und 槽）：提示人工补充正确语言并移除 und
+    for key, mapping in names.get("types", {}).items():
+        if isinstance(mapping, dict) and "und" in mapping:
+            problems.append(
+                f"提示: 类型 {key} 的 name 语言未识别（und 槽），建议人工补充正确语言并移除 und"
+            )
+    for cid, mapping in names.get("consumables", {}).items():
+        if isinstance(mapping, dict) and "und" in mapping:
+            problems.append(
+                f"提示: 耗材 {cid} 的 name 语言未识别（und 槽），建议人工补充正确语言并移除 und"
+            )
     return problems
 
 # ---- 草稿验证（--validate-draft，CI 用）----
@@ -260,11 +289,15 @@ def validate_draft(
             continue
         cid = item.get("id")
         ctype = item.get("type")
-        # 代码/标识字段必须 ASCII（id、type 引用）；model/name/unit/meta 按约定豁免
+        # 代码/标识字段必须 ASCII（id、type 引用、model 型号）
         if not _is_ascii(cid or ""):
             problems.append(f"consumable id {cid!r} 含非 ASCII 字符，id 必须为英文/数字")
         if not _is_ascii(ctype or ""):
             problems.append(f"consumable type {ctype!r} 含非 ASCII 字符，type 必须为英文/数字")
+        if not _is_ascii(item.get("model") or ""):
+            problems.append(
+                f"consumable {cid or '?'} 的 model 含非 ASCII 字符，型号须为英文/数字"
+            )
         if ctype not in known:
             problems.append(f"consumable {cid} 引用未知类型 {ctype!r}")
             continue
@@ -296,7 +329,7 @@ def ingest_user_library(
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """摄入单份草稿（user_library.json）到内置库。返回报告（新增 / 跳过 / 需人工裁决）。"""
-    report: dict[str, Any] = {"added": [], "skipped": [], "conflict": []}
+    report: dict[str, Any] = {"added": [], "skipped": [], "conflict": [], "warnings": []}
 
     # 内置库原始数据（保留 index 的 schema_version 等无关键）
     raw = load_raw_library(root)
@@ -321,10 +354,22 @@ def ingest_user_library(
             continue
         builtin_types[key] = raw_type
         report["added"].append(f"type {key}")
-        # 多语言拆解（类型显示名）
-        if isinstance(raw_type.get("name"), dict):
-            names_types[key] = {k: v for k, v in raw_type["name"].items() if v}
-            raw_type["name"] = _plain_name(raw_type["name"])
+        # 多语言拆解（类型显示名）：dict 直接拆；裸字符串按语言自动填 names
+        name = raw_type.get("name")
+        if isinstance(name, dict):
+            names_types[key] = {k: v for k, v in name.items() if v}
+            raw_type["name"] = _plain_name(name)
+        else:
+            locale = _detect_locale(name)
+            if locale:
+                names_types[key] = {locale: name}
+            else:
+                # 无法识别的语言：存入 names.json 的 'und'（undetermined）槽，
+                # 既保留原文、又便于后期人工 grep 出所有待整理条目。
+                names_types[key] = {"und": name}
+                report["warnings"].append(
+                    f"type {key} 的 name 语言无法识别（{name!r}），已存入 names.json 的 und 槽，请人工补充正确语言并移除 und"
+                )
 
     # 2. consumables（锚点 = type + model）
     known_types = set(builtin_types) | set(user.get("types") or {})
@@ -357,11 +402,21 @@ def ingest_user_library(
             continue
         builtin_consumables.append(raw_item)
         report["added"].append(f"consumable {raw_item.get('id')}")
-        if isinstance(raw_item.get("name"), dict):
+        name = raw_item.get("name")
+        if isinstance(name, dict):
             names_consumables[raw_item.get("id")] = {
-                k: v for k, v in raw_item["name"].items() if v
+                k: v for k, v in name.items() if v
             }
-            raw_item["name"] = _plain_name(raw_item["name"])
+            raw_item["name"] = _plain_name(name)
+        else:
+            locale = _detect_locale(name)
+            if locale:
+                names_consumables[raw_item.get("id")] = {locale: name}
+            else:
+                names_consumables[raw_item.get("id")] = {"und": name}
+                report["warnings"].append(
+                    f"consumable {raw_item.get('id')} 的 name 语言无法识别（{name!r}），已存入 names.json 的 und 槽，请人工补充正确语言并移除 und"
+                )
 
     # 3. 排序归位 + 写回
     index["types"] = sort_types(builtin_types)
@@ -389,7 +444,7 @@ def ingest_contributions(
 ) -> dict[str, Any]:
     """摄入分支 contributions/ 文件夹下的全部草稿（每份 = contributions/<用户名>/user_library.json）。"""
     report: dict[str, Any] = {
-        "drafts": [], "added": [], "skipped": [], "conflict": [],
+        "drafts": [], "added": [], "skipped": [], "conflict": [], "warnings": [],
     }
     drafts = (
         sorted(p for p in contributions_dir.glob(f"*/{DRAFT_FILENAME}") if p.is_file())
@@ -402,6 +457,7 @@ def ingest_contributions(
         report["added"].extend(sub["added"])
         report["skipped"].extend(sub["skipped"])
         report["conflict"].extend(sub["conflict"])
+        report["warnings"].extend(sub.get("warnings", []))
     if drafts and not dry_run:
         problems = check_library(root)
         report["post_check"] = problems
@@ -496,6 +552,10 @@ def main() -> int:
         print(f"  需人工裁决 {len(report['conflict'])} 项（不自动覆盖）：")
         for item in report["conflict"]:
             print(f"    ! {item}")
+    if report.get("warnings"):
+        print(f"  语言识别提示 {len(report['warnings'])} 项：")
+        for w in report["warnings"]:
+            print(f"    ? {w}")
     if report["post_check"]:
         errors = [p for p in report["post_check"] if not p.startswith("提示:")]
         if errors:
@@ -504,7 +564,7 @@ def main() -> int:
                 print(f"    - {problem}")
             return 1
         for problem in report["post_check"]:
-            print(f"    · 提示: {problem}（不影响摄入，建议补充多语言）")
+            print(f"    · {problem}（不影响摄入，建议补充多语言）")
     return 0
 
 if __name__ == "__main__":
