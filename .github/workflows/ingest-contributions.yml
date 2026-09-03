@@ -6,7 +6,7 @@
 #   2. 本工作流在 PR 上下文自动处理草稿：
 #      - 仅运行仓库自带（main 上的）摄入工具：先把整个集成包恢复成 main 版本，
 #        草稿只作为数据喂入，绝不执行 PR 内的任何代码（防供应链风险）；
-#      - 恢复集成包同时把 library/ 对齐成 main 最新，组装永远基于最新主分支，
+#      - 把 library/ 对齐成 main 最新，组装永远基于最新主分支，
 #        不再有「长期 contributions 分支滞后于 main」的问题；
 #      - 组装完成后移除整个 contributions/ 目录；
 #      - 组装结果 + 草稿删除一起提交回 PR 头；
@@ -40,11 +40,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Restore trusted integration code from main
-        # 安全 + 同步：只跑仓库自带的摄入逻辑，不执行 PR 内代码；
-        # 同时把 library/ 恢复成 main 最新，确保组装永远基于最新主分支。
+        # 安全 + 同步：把整个仓库恢复成 main 版本（仅跑仓库自带摄入逻辑、
+        # 不执行 PR 内代码），同时把 library/ 对齐成 main 最新，确保组装
+        # 永远基于最新主分支。草稿 contributions/ 为未跟踪文件，不受影响。
         run: |
           git fetch origin main
-          git checkout origin/main -- custom_components/consumable_manager/
+          git checkout origin/main -- .
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -55,9 +56,9 @@ jobs:
         run: python tools/ingest.py --check
 
       - name: Ingest all drafts under contributions/
-        # 工具只读取 PR 中的 contributions/ 文件夹（contributions/*/user_library.json）
-        run: python tools/ingest.py --ingest --verbose \
-          --library custom_components/consumable_manager/library
+        # 工具只读取 PR 中的 contributions/ 文件夹（contributions/*/user_library.json）；
+        # library 路径由 ingest.py 按自身位置自动解析（集成根目录下的 library/），无需手写。
+        run: python tools/ingest.py --ingest --verbose
 
       - name: Post-ingest check
         run: python tools/ingest.py --check
