@@ -1,7 +1,7 @@
 """耗材类型条目的协调器（ConsumableTypeCoordinator）。"""
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 import json
 import re
 from typing import Any, Callable, Literal
@@ -19,11 +19,13 @@ from ..const import (
     CONF_GROUP_KIND, CONF_GROUP_NAME, GROUP_KIND_CUSTOM, CONF_SOURCE_ENTITIES,
     CONF_ENTITY_REGEX, CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR, CONF_THRESHOLD_TYPE,
     CONF_THRESHOLD_UNIT, DEFAULT_THRESHOLD, DEFAULT_THRESHOLD_TYPE, DEFAULT_THRESHOLD_UNIT,
+    CONF_LIFESPAN, CONF_LIFESPAN_UNIT, custom_consumable_entity_id,
     NOTIFY_STYLE_VALUE, NOTIFY_TEXT_CONSUMABLES, NOTIFY_TEXT_DESC_AREA, NOTIFY_TEXT_DESC_DEVICE,
     NOTIFY_TEXT_DESC_ENTITY, NOTIFY_TEXT_DESC_SPECS, NOTIFY_TEXT_LAST_REPLACED, NOTIFY_TEXT_REPLACE_NEEDED,
     NOTIFY_TEXT_UNKNOWN, OPERATOR_LESS_THAN, THRESHOLD_DEFAULT_OPERATOR, THRESHOLD_TYPE_REMAINING_TIME,
-    THRESHOLD_TYPE_USED_TIME, TIME_UNIT_TO_HOURS, TODO_KIND_REPLACE, CONF_CONSUMABLE_ID,
+    THRESHOLD_TYPE_USED_TIME, TIME_UNIT_TO_HOURS, TODO_KIND_REPLACE,
     STATE_OK, STATE_REPLACE_NEEDED, TODO_STATUS_NEEDS_ACTION, TODO_STATUS_COMPLETED, TIME_UOM_TO_HOURS,
+    UNIT_DAYS, resolve_unit,
 )
 
 from .. import bindings
@@ -81,9 +83,12 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             f"replace_status:{g.get(CONF_GROUP_ID, i)}"
             for i, g in enumerate(groups)
         ) + tuple(
-            f"group_entity_data:{g.get(CONF_GROUP_ID, i)}"
+            (
+                f"group_entity_data:{g.get(CONF_GROUP_ID, i)}"
+                if not self._group_is_custom(g)
+                else f"custom_consumable_data:{g.get(CONF_GROUP_ID, i)}"
+            )
             for i, g in enumerate(groups)
-            if not self._group_is_custom(g)
         )
 
     @property
@@ -108,8 +113,6 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         """全部分组的源实体快照并集（待办/订阅/通知/摘要统一读这份；含正则动态成员）。"""
         result: list[dict[str, Any]] = []
         for group in self.groups:
-            if self._group_is_custom(group):
-                continue
             manual = {
                 s["entity_id"]: s
                 for s in group.get(CONF_SOURCE_ENTITIES, [])
@@ -162,9 +165,12 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         ]
 
     def _group_live_entities(self, group: dict[str, Any]) -> list[str]:
-        """分组的 live 成员 = 手动固定快照 ∪ 正则规则运行时匹配（去重保序）。"""
+        """分组的 live 成员 = 手动固定快照 ∪ 正则规则运行时匹配（去重保序）。
+
+        自定义耗材实体分组：其唯一成员即本集成合成的倒计时数据实体。
+        """
         if self._group_is_custom(group):
-            return []
+            return [self._custom_entity_id(group)]
         manual = [
             s["entity_id"]
             for s in group.get(CONF_SOURCE_ENTITIES, [])
@@ -381,10 +387,15 @@ class ConsumableTypeCoordinator(BaseCoordinator):
     def last_replaced(self) -> str | None:
         return self._entry.options.get(CONF_LAST_REPLACED)
 
-    # ---- 自定义耗材实体分组（无绑定实体，按 added_at 计时）----
+    # ---- 自定义耗材实体分组（无绑定实体，按 added_at + lifespan 倒计时）----
     def _group_is_custom(self, group: dict[str, Any]) -> bool:
         """该分组是否为自定义耗材实体（自建数据，不绑定实体）。"""
         return group.get(CONF_GROUP_KIND) == GROUP_KIND_CUSTOM
+
+    def _custom_entity_id(self, group: dict[str, Any]) -> str:
+        """自定义分组合成数据实体（倒计时传感器）的 entity_id。"""
+        return custom_consumable_entity_id(
+            self.entry_id, group.get(CONF_GROUP_ID, ""))
 
     def _custom_added_at(self, group: dict[str, Any]) -> datetime | None:
         """解析添加/更换时间（ISO 日期或日期时间），无/非法返回 None。"""
@@ -409,21 +420,25 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         now = datetime.now(timezone.utc)
         return (now - added).total_seconds() / 3600.0
 
-    def _custom_triggered(self, group: dict[str, Any]) -> bool:
-        """自定义分组触发判定：已使用时长 > 阈值（used_time + greater_than）。"""
-        elapsed = self.custom_elapsed_hours(group)
-        if elapsed is None:
-            return False
-        _ttype, tval, tunit, top = self._group_threshold(group)
-        # 自定义分组恒按「已使用时长」语义评估（与表单固定阈值类型一致）
-        return evaluate_threshold(
-            THRESHOLD_TYPE_USED_TIME, tval, top, [elapsed], tunit
-        )
+    def custom_remaining_in_unit(self, group: dict[str, Any]) -> float | None:
+        """倒计时剩余时间（按寿命单位：天/小时/分钟）。
+
+        状态 = (added_at + lifespan) − now；寿命到期返回 0，逾期为负。
+        该数值直接作为合成数据实体的 state，供诊断实体按自由阈值判定。
+        """
+        added = self._custom_added_at(group)
+        lifespan = _to_float(group.get(CONF_LIFESPAN))
+        unit = group.get(CONF_LIFESPAN_UNIT, UNIT_DAYS)
+        if added is None or lifespan is None:
+            return None
+        factor = TIME_UNIT_TO_HOURS.get(unit, 24.0)
+        deadline = added + timedelta(hours=lifespan * factor)
+        now = datetime.now(timezone.utc)
+        remaining_hours = (deadline - now).total_seconds() / 3600.0
+        return remaining_hours / factor
 
     def group_status(self, group: dict[str, Any]) -> str:
-        """分组更换状态：分组内任一实体触发即「需要更换」。"""
-        if self._group_is_custom(group):
-            return STATE_REPLACE_NEEDED if self._custom_triggered(group) else STATE_OK
+        """分组更换状态：分组内任一实体触发即「需要更换」（含自定义合成实体）。"""
         g_resolved = set(self._group_resolved(group))
         if (
             self._current_triggered is not None
@@ -442,23 +457,25 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         """分组诊断实体属性：名称/阈值/实体/触发列表。"""
         if self._group_is_custom(group):
             ttype, tval, tunit, top = self._group_threshold(group)
+            remaining = self.custom_remaining_in_unit(group)
             elapsed = self.custom_elapsed_hours(group)
-            # 已用时长换算到阈值单位（与 evaluate_threshold 口径一致），便于对照
-            factor = TIME_UNIT_TO_HOURS.get(tunit, 1.0)
+            # 已用时长 / 剩余均换算到寿命单位，便于对照
+            factor = TIME_UNIT_TO_HOURS.get(
+                group.get(CONF_LIFESPAN_UNIT, UNIT_DAYS), 24.0)
             elapsed_in_unit = (elapsed / factor) if elapsed is not None else None
-            cid = group.get(CONF_CONSUMABLE_ID)
-            bound = self._library.get(cid) if cid else None
+            # 绑定耗材：走 bindings Store 层（key = 合成数据实体 id），与实体组一致
+            names, _specs = self._entity_consumables(self._custom_entity_id(group))
             return {
                 "group": group.get(CONF_GROUP_NAME),
                 "custom_consumable_entity": True,
                 "consumable_type": self.cons_type,
-                "binding_consumable": (
-                    bound.display_name(self.hass.config.language) if bound
-                    else None
-                ),
+                "binding_consumable": names,
                 "added_at": group.get(CONF_ADDED_AT),
+                "lifespan": _to_float(group.get(CONF_LIFESPAN)),
+                "lifespan_unit": group.get(CONF_LIFESPAN_UNIT, UNIT_DAYS),
+                "remaining": remaining,
                 "elapsed": elapsed_in_unit,
-                "threshold_type": THRESHOLD_TYPE_USED_TIME,
+                "threshold_type": ttype,
                 "threshold": tval,
                 "threshold_unit": tunit,
                 "threshold_operator": top,
@@ -485,9 +502,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         }
 
     def group_min_value(self, group: dict[str, Any]) -> float | None:
-        """分组内实体实时值的最小值（None 不参与比较，全 None 返回 None）。 """
-        if self._group_is_custom(group):
-            return None
+        """分组内实体实时值的最小值（None 不参与比较，全 None 返回 None）。
+
+        自定义分组返回合成数据实体的倒计时剩余值。
+        """
         values = [
             v
             for v in self._read_values(self._group_resolved(group))
@@ -496,16 +514,10 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         return min(values) if values else None
 
     def group_member_data(self, group: dict[str, Any]) -> dict[str, Any]:
-        """分组成员明细（分正常 / 已触发两类），供分组数据传感器暴露给自动化。"""
-        if self._group_is_custom(group):
-            return {
-                "group": group.get(CONF_GROUP_NAME),
-                "consumable_type": self.cons_type,
-                "custom_consumable_entity": True,
-                "normal_entities": [],
-                "triggered_entities": [],
-                "last_replaced": self.last_replaced,
-            }
+        """分组成员明细（分正常 / 已触发两类），供分组数据传感器暴露给自动化。
+
+        自定义分组经此通用路径：合成数据实体即唯一成员，绑定按 Store 层读取。
+        """
         g_resolved = self._group_resolved(group)
         ttype, tval, tunit, top = self._group_threshold(group)
         triggered = set(self.triggered_entities())
@@ -591,28 +603,6 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             local.strftime("%Y-%m-%d %H:%M"),
         )
 
-    def _custom_bound_consumables_label(self) -> str | None:
-        """自定义分组绑定了具体耗材时，待办优先显示该耗材（而非类型全部）。"""
-        library = self._library
-        if library is None:
-            return None
-        bound: list = []
-        for group in self.groups:
-            if not self._group_is_custom(group):
-                continue
-            cid = group.get(CONF_CONSUMABLE_ID)
-            if cid:
-                c = library.get(cid)
-                if c is not None:
-                    bound.append(c)
-        if not bound:
-            return None
-        locale = self.hass.config.language
-        names = "、".join(
-            f"{c.display_name(locale)}（{c.unit}）" for c in bound
-        )
-        return self._md_kv(NOTIFY_TEXT_CONSUMABLES, names)
-
     def _entity_area(self, entity_id: str) -> str | None:
         """实体所属区域名（实体 → 设备 → 区域注册表），无则 None。"""
         ent_reg = er.async_get(self.hass)
@@ -638,7 +628,9 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             # 引用的耗材已从库中移除（如用户库条目被删）→ 视为未知，不报错
             return None, None
         locale = self.hass.config.language
-        names = f"{consumable.display_name(locale)}（{consumable.unit}）"
+        # unit 存 locale 无关键，按当前语言翻译后拼接（旧字面量原样返回）
+        unit = resolve_unit(consumable.unit, self._labels) or ""
+        names = f"{consumable.display_name(locale)}（{unit}）"
         specs = (
             json.dumps(consumable.meta, ensure_ascii=False)
             if consumable.meta else None
@@ -709,51 +701,74 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 )
             parts.append("\n".join(lines))
         if not parts:
-            # 无触发实体（如刚恢复）：优先自定义分组绑定的具体耗材；
-            # 其次按各实体独立绑定层解析具体耗材；全未命中显示「未知」。
-            label = self._custom_bound_consumables_label()
-            if label is None:
-                matched: list[str] = []
-                seen: set[str] = set()
-                for snap in self.source_snapshots:
-                    names, _specs = self._entity_consumables(
-                        snap.get("entity_id", "")
-                    )
-                    if names and names not in seen:
-                        matched.append(names)
-                        seen.add(names)
-                if matched:
-                    label = self._md_kv(
-                        NOTIFY_TEXT_CONSUMABLES, "、".join(matched))
-                else:
-                    label = self._md_kv(
-                        NOTIFY_TEXT_CONSUMABLES,
-                        self._notify_text(NOTIFY_TEXT_UNKNOWN),
-                    )
+            # 无触发实体（如刚恢复）：按各实体独立绑定层解析具体耗材；
+            # 全未命中显示「未知」。自定义分组的合成数据实体已在 source_snapshots 中。
+            matched: list[str] = []
+            seen: set[str] = set()
+            for snap in self.source_snapshots:
+                names, _specs = self._entity_consumables(
+                    snap.get("entity_id", "")
+                )
+                if names and names not in seen:
+                    matched.append(names)
+                    seen.add(names)
+            if matched:
+                label = self._md_kv(
+                    NOTIFY_TEXT_CONSUMABLES, "、".join(matched))
+            else:
+                label = self._md_kv(
+                    NOTIFY_TEXT_CONSUMABLES,
+                    self._notify_text(NOTIFY_TEXT_UNKNOWN),
+                )
             parts.append(label)
         if last := self._last_replaced_label():
             parts.append(last)
         return "\n\n".join(parts) if parts else None
+
+    def _reset_group_added_at(self, options: dict[str, Any],
+            entity_id: str) -> None:
+        """勾选更换后重置对应自定义分组的计时起点（added_at = now）。
+
+        自定义耗材实体倒计时靠 added_at 推进；勾选「已更换」须从当前时刻重新计时，
+        否则会因无物理读数回正而永远停在逾期态。
+        """
+        groups = options.get(CONF_BINDING_GROUPS)
+        if not groups:
+            return
+        changed = False
+        new_groups: list[dict[str, Any]] = []
+        for g in groups:
+            ng = dict(g)
+            if self._group_is_custom(g) and self._custom_entity_id(g) == entity_id:
+                ng[CONF_ADDED_AT] = datetime.now(timezone.utc).isoformat()
+                changed = True
+            new_groups.append(ng)
+        if changed:
+            options[CONF_BINDING_GROUPS] = new_groups
 
     @callback
     def async_mark_replaced(self, uid: str | None = None) -> None:
         """标记已更换：记录时间、完成「更换」待办，并联动扣减关联类型的库存项。"""
         options = self.options
         options[CONF_LAST_REPLACED] = datetime.now(timezone.utc).isoformat()
-        self._write_options(options)
         prefix = self._auto_uid(TODO_KIND_REPLACE)
+        entity_id: str | None = None
         if uid:
             self._complete_todo(uid)
             # 勾选瞬间把描述同步为刚发生的时间（下次刷新也会刷新）
             if uid in self._todos:
                 entity_id = uid[len(prefix) + 1:]
-                self._todos[uid]["description"] = (
-                    self._replace_description(entity_id)
-                )
+                # 自定义耗材实体分组：勾选即重置计时起点（added_at = now）
+                self._reset_group_added_at(options, entity_id)
         else:
             for other in list(self._todos):
                 if other == prefix or other.startswith(prefix + "_"):
                     self._complete_todo(other)
+        # 先写回配置：此后 last_replaced / added_at 已落 entry.options，
+        # 下方重建描述才能读到最新「上次更换时间」。
+        self._write_options(options)
+        if uid and entity_id and uid in self._todos:
+            self._todos[uid]["description"] = self._replace_description(entity_id)
         # 联动扣减：库存条目中与该耗材类型绑定的库存项各 -1
         stock = _find_stock_coordinator(self.hass)
         if stock is not None:
@@ -831,11 +846,21 @@ class ConsumableTypeCoordinator(BaseCoordinator):
     # ---- 通知（基于触发集合差集，不再读 alert_status 单 bit）----
     @callback
     def async_subscribe(self) -> Callable[[], None] | None:
-        """订阅绑定实体状态变化，即时刷新（手动改值即时检测跳变通知）。"""
-        entities = list(
-            set(self.source_entities)
-            | set(self.resolved_source_entities())
-        )
+        """订阅绑定实体状态变化，即时刷新（手动改值即时检测跳变通知）。
+
+        自定义分组的合成数据实体由协调器自身刷新驱动，无外部状态变化，
+        排除以避免刷新回环。
+        """
+        custom_ids = {
+            self._custom_entity_id(g)
+            for g in self.groups if self._group_is_custom(g)
+        }
+        entities = [
+            e for e in (
+                set(self.source_entities)
+                | set(self.resolved_source_entities())
+            ) if e not in custom_ids
+        ]
         if not entities:
             return None
         return async_track_state_change_event(

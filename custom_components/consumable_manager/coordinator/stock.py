@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant, callback
 from .base import BaseCoordinator, ConsumableManagerData, TriggeredSet
 from ..const import (
     CONF_ENTRY_TYPE, CONF_ITEM_ID, CONF_ITEM_NAME, CONF_ITEM_TYPE, CONF_MODEL, CONF_QUANTITY,
-    CONF_STOCK_ITEMS, CONF_STOCK_THRESHOLD, CONF_UNIT, DOMAIN, ENTRY_TYPE_STOCK,
+    CONF_STOCK_ITEMS, CONF_STOCK_THRESHOLD, CONF_UNIT, DOMAIN, ENTRY_TYPE_STOCK, resolve_unit,
     NOTIFY_STYLE_VALUE, NOTIFY_TEXT_DESC_THRESHOLD, NOTIFY_TEXT_LOW_STOCK,
     STATE_LOW_STOCK, STATE_OK, TODO_KIND_PURCHASE, TODO_STATUS_COMPLETED,
     TODO_STATUS_NEEDS_ACTION,
@@ -79,7 +79,8 @@ class StockCoordinator(BaseCoordinator):
 
     def unit(self, item_id: str) -> str | None:
         item = self.item(item_id)
-        return item.get(CONF_UNIT) or None if item else None
+        raw = item.get(CONF_UNIT) if item else None
+        return resolve_unit(raw, self._labels)
 
     def is_low(self, item_id: str) -> bool:
         """是否低于库存阈值。"""
@@ -171,7 +172,7 @@ class StockCoordinator(BaseCoordinator):
                 continue
             name = item.get(CONF_ITEM_NAME) or item.get(CONF_MODEL) or iid
             model = item.get(CONF_MODEL)
-            unit = item.get(CONF_UNIT, "")
+            unit = resolve_unit(item.get(CONF_UNIT), self._labels) or ""
             qty = item.get(CONF_QUANTITY, 0)
             threshold = item.get(CONF_STOCK_THRESHOLD, 0)
             label = f"{name}（{model}）" if model else name
