@@ -1,11 +1,12 @@
 """耗材管理器 集成入口平台。"""
 from __future__ import annotations
 
+from typing import Any
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, event, translation
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.util import dt as dt_util
 
 from .const import (
     DOMAIN, LOGGER, NOTIFY_DEFAULT_SCHEDULE_TIME, PLATFORMS,
@@ -29,11 +30,19 @@ type ConsumableManagerConfigEntry = ConfigEntry[ConsumableManagerData]
 # 仅支持界面配置（无 YAML 配置项），消除 hassfest CONFIG_SCHEMA 警告
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
-def _async_labels(hass: HomeAssistant) -> dict[str, str]:
+async def _async_labels(hass: HomeAssistant) -> dict[str, str]:
     """运行文案标签（翻译缓存；todo_kind + notify_text + 计量单位共用一张表）。"""
     translations = translation.async_get_cached_translations(
         hass, hass.config.language, "selector", integration=DOMAIN
     )
+    if not translations:
+        # 冗余兜底：启动极早期翻译缓存可能尚未预热（返回空表），
+        try:
+            translations = await translation.async_get_translations(
+                hass, hass.config.language, "selector", [DOMAIN]
+            )
+        except Exception:  # noqa: BLE001 —— 翻译加载失败不影响集成运行
+            translations = {}
     labels: dict[str, str] = {}
     for kind in TODO_KINDS:
         labels[kind] = translations.get(
@@ -52,7 +61,7 @@ def _async_labels(hass: HomeAssistant) -> dict[str, str]:
 def _async_register_notify_schedule(hass: HomeAssistant,
     entry: ConsumableManagerConfigEntry,
 ) -> None:
-    """注册每天定时推送（本地时刻 → UTC）。"""
+    """注册每天定时推送（本地时刻，second=0 每天只触发一次）。"""
     def _parse(schedule: str) -> tuple[int, int] | None:
         try:
             hour, minute = (int(part) for part in schedule.split(":"))
@@ -62,13 +71,12 @@ def _async_register_notify_schedule(hass: HomeAssistant,
 
     def _track(hour: int, minute: int, callback) -> None:
         try:
-            local_dt = dt_util.now().replace(
-                hour=hour, minute=minute, second=0, microsecond=0
-            )
-            utc_dt = dt_util.as_utc(local_dt)
             entry.async_on_unload(
-                event.async_track_utc_time_change(
-                    hass, callback, hour=utc_dt.hour, minute=utc_dt.minute
+                # second=0 必传：缺省 second 会展开为 0-59 全部秒，
+                # 回调在目标分钟内每秒触发一次。async_track_time_change
+                # 按本地时间匹配，跨夏令时自动跟随（无需手工换 UTC）。
+                event.async_track_time_change(
+                    hass, callback, hour=hour, minute=minute, second=0
                 )
             )
         except Exception:  # noqa: BLE001 —— 调度注册失败不影响集成运行
@@ -117,7 +125,7 @@ async def async_setup_entry(hass: HomeAssistant,
     # 绑定缓存必须在建协调器 / 实体属性计算之前异步预热：否则首次
     # get_binding 会落在事件循环内同步读盘，触发 HA 的 blocking call 告警。
     await bindings.async_prime(hass)
-    labels = _async_labels(hass)
+    labels = await _async_labels(hass)
     # 类型元数据（内置库+用户库合并；自定义类型不在库中时为 None）
     library = await async_load_library(hass)
     type_meta = library.type_meta(entry.data.get(CONF_ENTRY_TYPE, ""))
@@ -131,6 +139,7 @@ async def async_setup_entry(hass: HomeAssistant,
     entry.runtime_data = ConsumableManagerData(
         coordinator=coordinator,
         entity_signature=coordinator.entity_signature,
+        notification_section=_notification_snapshot(entry),
     )
 
     entry.async_on_unload(entry.add_update_listener(async_update_listener))
@@ -138,19 +147,28 @@ async def async_setup_entry(hass: HomeAssistant,
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
+def _notification_snapshot(
+    entry: ConsumableManagerConfigEntry,
+) -> dict[str, Any] | None:
+    """条目通知段快照（浅拷贝；无段返回 None），供 update listener 变更比对。"""
+    section = entry.options.get(CONF_NOTIFICATION)
+    return dict(section) if isinstance(section, dict) else None
+
 async def async_update_listener(hass: HomeAssistant,
     entry: ConsumableManagerConfigEntry,
 ) -> None:
-    """选项变更：通知配置一律重载；其余按实体签名重载或刷新。"""
+    """选项变更：通知段变化才重载（快照比对）；其余按实体签名重载或刷新。"""
     if entry.data.get(CONF_ENTRY_TYPE) == ENTRY_TYPE_NOTIFICATION:
         await hass.config_entries.async_reload(entry.entry_id)
         return
-    if CONF_NOTIFICATION in entry.options:
-        # 条目级通知段存在（新增 / 修改覆盖）→ 重载刷新定时调度
+    runtime = entry.runtime_data
+    snapshot = _notification_snapshot(entry)
+    if snapshot != getattr(runtime, "notification_section", None):
+        runtime.notification_section = snapshot
         await hass.config_entries.async_reload(entry.entry_id)
         return
-    coordinator = entry.runtime_data.coordinator
-    if coordinator.entity_signature != entry.runtime_data.entity_signature:
+    coordinator = runtime.coordinator
+    if coordinator.entity_signature != runtime.entity_signature:
         await hass.config_entries.async_reload(entry.entry_id)
     else:
         await coordinator.async_request_refresh()
