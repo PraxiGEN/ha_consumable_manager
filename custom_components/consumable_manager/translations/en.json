@@ -109,6 +109,28 @@
         "custom_consumable": "Custom consumable"
       }
     },
+    "units": {
+      "options": {
+        "piece": "pcs",
+        "grain": "grain",
+        "sheet": "sheet",
+        "bottle": "bottle",
+        "tube": "tube",
+        "bag": "bag",
+        "box": "box",
+        "pack": "pack",
+        "set": "set",
+        "group": "group",
+        "cell": "cell",
+        "block": "block",
+        "item": "item",
+        "roll": "roll",
+        "ml": "mL",
+        "l": "L",
+        "g": "g",
+        "kg": "kg"
+      }
+    },
     "service_action": {
       "options": {
         "add": "Add",
