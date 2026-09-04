@@ -7,6 +7,13 @@
 本目录是 `consumable_manager` 集成的内置耗材库。内置库是**数据**，不是代码——
 社区通过 PR 贡献耗材 / 类型，由 CI 自动组装进这里的 JSON 文件。
 
+> [!WARNING]
+> **不接受直接 PR 修改本目录下的任何文件。**
+> `library/` 由 CI 独占写入，摄入时会依次执行三道闸：字段校验 → 排序归位 →
+> 补全 `names.json` 多语言。直接编辑这里的 JSON 提 PR 会**全部绕过**，历史上
+> 正是这样混入过缺多语言、未校验的脏数据。此类 PR 会被要求改走草稿流程或直接驳回。
+> 唯一贡献入口：`contributions/<你的GitHub用户名>/user_library.json`（见下节）。
+
 ### 仓库结构
 
 ```
@@ -22,6 +29,11 @@
 
 **摄入工具只读取 git 分支中的 `contributions/` 文件夹，不在本地使用。**
 贡献流程中没有任何本地运行工具的环节：
+
+> [!IMPORTANT]
+> 你只需要提交 `contributions/<你的GitHub用户名>/user_library.json` 这一个文件。
+> **不要**在 PR 里直接改动 `library/` —— 内置库由 CI 根据草稿重新组装后
+> 自动提交回你的分支，人工改动会被覆盖或导致 PR 被驳回。
 
 1. Fork 并克隆本仓库（对仓库有写权限者也可直接在仓库内建分支）。
 2. 把你在 Home Assistant 界面 / 服务中添加的内容（本地
@@ -65,6 +77,9 @@ library/
   git diff，由 CI 工具维持。
 - **全字段必填**：`meta` 可为空对象 `{}`；校验只查「有且合法」。
 - **单向回流**：`contributions/` 草稿 → 内置库，永不反向同步。
+- **不接受直接 PR**：本目录由 CI 独占写入（校验 → 排序 → 补全多语言），
+  对 `library/` 的任何改动都必须经 `contributions/` 草稿摄入；
+  即便 CI 未覆盖该改动，也会被要求重走草稿流程。
 
 ### 字段规格（schema v1）
 
@@ -74,17 +89,20 @@ consumables.json 每条（六字段全必填）：
 |------|------|
 | `id` | 全局唯一，`^[a-z0-9_]+$`，约定 `<type>_<slug>`，如 `filter_hepa13` |
 | `type` | 耗材类型，必须在 index.json 的 types 中定义 |
-| `model` | 型号（国际通用编号，永不翻译） |
-| `name` | 显示名，**英文 plain 兜底**（多语言见 names.json） |
-| `unit` | 计量单位（个 / 节 / 粒 …） |
+| `model` | 型号（国际通用编号，**纯 ASCII**，永不翻译） |
+| `name` | 显示名，**保留原文（任意语言均可）**（多语言见 names.json） |
+| `unit` | 计量单位，**locale 无关键（纯 ASCII 英文）**，显示时按语言翻译；<br>可用值：`piece` `grain` `sheet` `bottle` `tube` `bag` `box` `pack` `set` `group` `cell` `block` `item` `roll` `ml` `l` `g` `kg` |
 | `meta` | 规格对象，可为 `{}` |
+
+> `model` / `unit` 属标识字段，CI 草稿校验强制 ASCII；`name` / `meta` 为用户可见文本，允许任意语言。
 
 index.json：`schema_version`（=1）+ `types`（类型键 → `name` / `icon` /
 `default_threshold_type` / `default_threshold` / `default_threshold_unit`，全必填）。
 
 ### 多语言
 
-- 数据文件 `name` 一律**英文 plain**（可读兜底）；具体语言的显示名放 `names.json`。
+- 数据文件 `name` **保留贡献者原文（任意语言均可）**；各语言显示名放 `names.json`。
+- 摄入时按原文自动识别语言并写入 `names.json`（中文→`zh-Hans`、拉丁→`en`；判不出→`und` 槽待人工补）。
 - `names.json` 两段，key 规则：`types` 用类型键；`consumables` 用耗材 id。
 - 解析回退链：names 映射 → 数据内 name → model / 类型键，任何语言下都有显示。
 - 新增语言只需在 `names.json` 对应 key 上补一个语言键，无需改数据文件。
@@ -106,6 +124,16 @@ integration. The library is **data, not code** — the community contributes
 consumables / types via PR, and CI assembles them into these
 JSON files automatically.
 
+> [!WARNING]
+> **Direct PRs that modify files in this directory are not accepted.**
+> `library/` is written exclusively by CI, which runs three gates on every
+> contribution: field validation → re-sorting → `names.json` localization fill.
+> Hand-editing these JSON files in a PR **bypasses all three** — that is exactly
+> how unvalidated, untranslated entries slipped in before. Such PRs will be
+> asked to go through the draft flow, or rejected outright.
+> The only contribution entry point is
+> `contributions/<your GitHub username>/user_library.json` (see below).
+
 ### Repository layout
 
 ```
@@ -122,6 +150,13 @@ JSON files automatically.
 **The ingest tool reads only the `contributions/` folder in the git branch —
 it is never used locally.** No step of the contribution flow runs anything on
 your machine:
+
+> [!IMPORTANT]
+> The only file you need to submit is
+> `contributions/<your GitHub username>/user_library.json`.
+> **Do not** edit `library/` directly in your PR — CI rebuilds the library from
+> the drafts and commits the result back to your branch; manual edits get
+> overwritten or get the PR rejected.
 
 1. Fork and clone this repo (or push a branch within the repo if you have
    write access).
@@ -172,6 +207,10 @@ library/
   checks "present and valid".
 - **One-way ingestion**: `contributions/` drafts → built-in library, never
   the other way around.
+- **No direct PRs**: this directory is written exclusively by CI (validate →
+  sort → fill localization). Every change to `library/` must come through a
+  `contributions/` draft; even when CI happens not to touch it, the PR will be
+  asked to go through the draft flow instead.
 
 ### Field spec (schema v1)
 
@@ -181,10 +220,13 @@ Each consumables.json entry (six required fields):
 |-------|-------------|
 | `id` | globally unique, `^[a-z0-9_]+$`, convention `<type>_<slug>`, e.g. `filter_hepa13` |
 | `type` | consumable type, must be defined in index.json types |
-| `model` | model number (internationally used code, never translated) |
-| `name` | display name, **English plain fallback** (see names.json for localization) |
-| `unit` | unit of measure (pcs / cells / tablets …) |
+| `model` | model number (internationally used code, **ASCII only**, never translated) |
+| `name` | display name, **kept in the contributor's own language** (see names.json) |
+| `unit` | unit of measure, **a locale-neutral ASCII key**, translated at display time;<br>allowed: `piece` `grain` `sheet` `bottle` `tube` `bag` `box` `pack` `set` `group` `cell` `block` `item` `roll` `ml` `l` `g` `kg` |
 | `meta` | spec object, may be `{}` |
+
+> `model` / `unit` are identifier fields — the CI draft check enforces ASCII.
+> `name` / `meta` are user-visible text and may contain any language.
 
 index.json: `schema_version` (=1) + `types` (type key → `name` / `icon` /
 `default_threshold_type` / `default_threshold` / `default_threshold_unit`,
@@ -192,8 +234,10 @@ all required).
 
 ### Localization
 
-- Data-file `name` is always **English plain text** (readable fallback);
+- Data-file `name` **keeps the contributor's original text** (any language);
   per-locale names live in `names.json`.
+- On ingest, the language is auto-detected and written to `names.json`
+  (CJK → `zh-Hans`, Latin → `en`; undetectable → `und` slot for manual review).
 - `names.json` has two sections; key rules: `types` → type key;
   `consumables` → consumable id.
 - Resolution fallback: names map → data-file name → model / type key
