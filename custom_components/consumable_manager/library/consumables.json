@@ -184,6 +184,18 @@
     }
   },
   {
+    "id": "battery_cr3032",
+    "type": "battery",
+    "model": "CR3032",
+    "name": "纽扣电池 CR3032",
+    "unit": "粒",
+    "meta": {
+      "size": "3.2mm x 30mm",
+      "voltage": 3,
+      "chemistry": "Li-Mn"
+    }
+  },
+  {
     "id": "battery_d",
     "type": "battery",
     "model": "D",
