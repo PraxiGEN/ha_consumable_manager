@@ -451,3 +451,6 @@ class ConsumableManagerData:
     coordinator: BaseCoordinator
     # 条目建立时的实体集合签名，用于判断配置变更是否需要重载
     entity_signature: tuple[str, ...] = ()
+    # 条目建立时的通知段快照（options[CONF_NOTIFICATION] 浅拷贝 / None），
+    # update listener 变更比对用：避免协调器自写 options 触发无谓重载
+    notification_section: dict[str, Any] | None = None
