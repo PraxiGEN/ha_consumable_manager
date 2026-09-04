@@ -27,12 +27,12 @@
       "item_not_found": "未找到该库存项"
     },
     "error": {
-  "required": "此项必填",
-  "invalid_key": "类型键仅允许小写字母、数字与下划线",
-  "key_exists": "该类型键已存在",
-  "invalid": "格式无效",
-  "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）",
-  "model_ascii": "型号仅支持英文/数字字符（参与耗材 ID 生成与去重）"
+      "required": "必填字段",
+      "invalid_key": "仅允许小写字母、数字与下划线",
+      "key_exists": "该键已存在",
+      "invalid": "值无效",
+      "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）",
+      "model_ascii": "型号仅支持英文/数字字符（参与耗材 ID 生成与去重）"
     }
   },
   "selector": {
@@ -89,7 +89,8 @@
         "desc_entity": "实体",
         "desc_specs": "规格",
         "desc_threshold": "阈值",
-        "unknown": "未知"
+        "unknown": "未知",
+        "data_suffix": "数据"
       }
     },
     "notify_mode": {
@@ -146,12 +147,20 @@
         "types": "耗材类型",
         "consumables": "耗材"
       }
+    },
+    "group_kind": {
+      "options": {
+        "binding": "绑定实体",
+        "custom_consumable_entity": "自定义耗材实体"
+      }
     }
   },
   "options": {
     "error": {
       "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）",
-      "invalid": "格式无效"
+      "invalid": "值无效",
+      "required": "必填字段",
+      "model_ascii": "型号必须为英文/数字（ASCII）"
     },
     "step": {
       "add_item": {
@@ -292,6 +301,10 @@
         "description": "选择阈值类型、数值、单位与计算方式（大于 / 小于 / 等于）。",
         "title": "设置阈值"
       }
+    },
+    "abort": {
+      "item_not_found": "未找到该库存项",
+      "group_not_found": "未找到该分组（可能已被删除），请重新打开配置界面"
     }
   },
   "entity": {
@@ -604,4 +617,3 @@
     }
   }
 }
-
