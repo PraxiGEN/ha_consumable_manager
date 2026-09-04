@@ -27,11 +27,12 @@
       "item_not_found": "Stock item not found"
     },
     "error": {
-      "required": "This field is required",
-      "invalid_key": "Type key allows only lowercase letters, digits and underscores",
-      "key_exists": "This type key already exists",
-      "invalid": "Invalid format",
-      "no_channel": "Select at least one notification channel (system notification or entities)"
+  "required": "This field is required",
+  "invalid_key": "Type key allows only lowercase letters, digits and underscores",
+  "key_exists": "This type key already exists",
+  "invalid": "Invalid format",
+  "no_channel": "Select at least one notification channel (system notification or entities)",
+  "model_ascii": "Model accepts ASCII letters and digits only (used for ID generation and dedup)"
     }
   },
   "selector": {
