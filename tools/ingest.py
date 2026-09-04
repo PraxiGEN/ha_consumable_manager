@@ -78,6 +78,8 @@ except ImportError:
         parse_consumable,
     )
 
+from consumable_manager.const import CONSUMABLE_UNITS  # noqa: E402
+
 # ---- 原始数据读写 ----
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -297,6 +299,18 @@ def validate_draft(
         if not _is_ascii(item.get("model") or ""):
             problems.append(
                 f"consumable {cid or '?'} 的 model 含非 ASCII 字符，型号须为英文/数字"
+            )
+        # 计量单位是 locale 无关键（存储键、显示时翻译），与 id/model 同为标识字段
+        raw_unit = item.get("unit") or ""
+        if not _is_ascii(raw_unit):
+            problems.append(
+                f"consumable {cid or '?'} 的 unit {raw_unit!r} 含非 ASCII 字符，"
+                "计量单位须使用英文键（如 piece / grain / bottle）"
+            )
+        elif raw_unit and raw_unit not in CONSUMABLE_UNITS:
+            problems.append(
+                f"consumable {cid or '?'} 的 unit {raw_unit!r} 不是已知单位键，"
+                f"可用值: {', '.join(CONSUMABLE_UNITS)}"
             )
         if ctype not in known:
             problems.append(f"consumable {cid} 引用未知类型 {ctype!r}")
