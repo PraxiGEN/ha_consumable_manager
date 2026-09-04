@@ -16,7 +16,7 @@ from . import bindings
 from .const import (
     DOMAIN, CONF_CONSUMABLE_ID, CONF_GROUP_ID,
     CONF_GROUP_NAME, CONF_ITEM_ID, CONF_ITEM_NAME, CONF_ITEM_TYPE,
-    CONF_STOCK_ITEMS,
+    CONF_STOCK_ITEMS, CONSUMABLE_UNITS,
     ENTRY_TYPE_STOCK, THRESHOLD_TYPES, THRESHOLD_UNIT_OPTIONS,
 )
 from .coordinator import (
@@ -305,6 +305,11 @@ async def async_add_consumable(hass: HomeAssistant,
     if not (cons_type and model and name and unit):
         raise ServiceValidationError(
             "cons_type / model / name / unit 为必填字段"
+        )
+    if unit not in CONSUMABLE_UNITS:
+        raise ServiceValidationError(
+            f"非法 unit {unit!r}，须为标准单位键，"
+            f"支持：{', '.join(CONSUMABLE_UNITS)}"
         )
     if not isinstance(meta, dict):
         raise ServiceValidationError("meta 必须是对象（可为空 {}）")

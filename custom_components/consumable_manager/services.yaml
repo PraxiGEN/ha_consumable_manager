@@ -107,9 +107,31 @@ add_consumable:
       required: true
       name: "{{ name }}"
       description: "{{ description }}"
-      example: 个
+      example: piece
+      # 下拉列出标准单位键；标签由 translations/*.json 的 selector.units.options 前端翻译
+      # （提交值仍是键，如 piece / grain），YAML/脚本直调不受此 UI 约束。
       selector:
-        text: {}
+        select:
+          options:
+            - piece
+            - grain
+            - sheet
+            - bottle
+            - tube
+            - bag
+            - box
+            - pack
+            - set
+            - group
+            - cell
+            - block
+            - item
+            - roll
+            - ml
+            - l
+            - g
+            - kg
+          translation_key: units
     meta:
       required: false
       name: "{{ name }}"
