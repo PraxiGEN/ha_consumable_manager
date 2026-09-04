@@ -24,6 +24,8 @@ from .const import (
     CONF_LIFESPAN_UNIT,
     CONF_UNIT,
     GROUP_KIND_CUSTOM,
+    NOTIFY_TEXT_DATA_SUFFIX,
+    NOTIFY_TEXT_UNKNOWN,
     resolve_unit,
     UNIT_DAYS,
     UNIT_HOURS,
@@ -53,6 +55,15 @@ _LIFESPAN_UNIT_TO_UOM: dict[str, str] = {
     UNIT_HOURS: "h",
     UNIT_MINUTES: "min",
 }
+
+def _data_sensor_name(coordinator, group: dict[str, Any]) -> str:
+    """数据传感器名 = 分组名 + 数据后缀（标签表本地化）。"""
+    suffix = coordinator._labels.get(NOTIFY_TEXT_DATA_SUFFIX, "")
+    base = group.get(CONF_GROUP_NAME) or group.get(CONF_GROUP_ID, "default")
+    if not suffix:
+        return str(base)
+    sep = "" if not suffix.isascii() else " "
+    return f"{base}{sep}{suffix}"
 
 # ---- 静态实体描述符 ----
 STOCK_STATUS_DESCRIPTION = SensorEntityDescription(
@@ -181,8 +192,11 @@ class ReplaceStatusSensor(
         group_id = group.get(CONF_GROUP_ID, "default")
         self._attr_unique_id = f"{coordinator.entry_id}_grp_{group_id}"
         self._attr_device_info = coordinator.device_info
-        # 实体名 = 分组名（设备为该条目类型），各组互不重名
-        self._attr_name = group.get(CONF_GROUP_NAME) or "默认"
+        # 实体名 = 分组名（设备为该条目类型），各组互不重名；
+        # 兜底用分组 id（locale 无关），不硬编码「默认」
+        self._attr_name = (
+            group.get(CONF_GROUP_NAME) or group.get(CONF_GROUP_ID, "default")
+        )
 
     @property
     def native_value(self) -> str:
@@ -214,11 +228,10 @@ class GroupDataSensor(
         self.entity_description = description
         self._group = group
         group_id = group.get(CONF_GROUP_ID, "default")
-        group_name = group.get(CONF_GROUP_NAME) or "默认"
         self._attr_unique_id = f"{coordinator.entry_id}_grpdata_{group_id}"
         self._attr_device_info = coordinator.device_info
-        # 实体名 = 分组名 + 「数据」后缀，避免与诊断实体（仅分组名）重名
-        self._attr_name = f"{group_name}数据"
+        # 实体名 = 分组名 + 「数据」后缀（标签表本地化），避免与诊断实体重名
+        self._attr_name = _data_sensor_name(coordinator, group)
         # 主状态 = 组内实时值最小值（纯数值，不带单位，便于自动化比较）
 
     @property
@@ -251,7 +264,8 @@ class GroupDataSensor(
                 else None
             )
             bound.append(
-                f"{name} {raw}" if raw is not None else f"{name} 未知"
+                f"{name} {raw}" if raw is not None else
+                f"{name} {self.coordinator._notify_text(NOTIFY_TEXT_UNKNOWN)}"
             )
         return {
             "group": data.get("group"),
@@ -275,14 +289,13 @@ class CustomConsumableSensor(
         self.entity_description = GROUP_DATA_DESCRIPTION
         self._group = group
         group_id = group.get(CONF_GROUP_ID, "default")
-        group_name = group.get(CONF_GROUP_NAME) or "默认"
         self._attr_unique_id = f"{coordinator.entry_id}_customdata_{group_id}"
         # 强制确定性 entity_id（供 bindings Store 与 bind_entity 服务使用）
         self._attr_entity_id = custom_consumable_entity_id(
             coordinator.entry_id, group_id)
         self._attr_device_info = coordinator.device_info
-        # 实体名 = 分组名 + 「数据」后缀，与 GroupDataSensor 命名规则一致
-        self._attr_name = f"{group_name}数据"
+        # 实体名 = 分组名 + 「数据」后缀（标签表本地化），与 GroupDataSensor 一致
+        self._attr_name = _data_sensor_name(coordinator, group)
 
     @property
     def native_value(self) -> float | None:
