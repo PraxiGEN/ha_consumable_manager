@@ -138,6 +138,56 @@ THRESHOLD_DEFAULT_OPERATOR: Final[dict[str, str]] = {
     THRESHOLD_TYPE_USED_TIME: OPERATOR_GREATER_THAN,
 }
 
+# ---- 耗材计量单位（locale 无关键：存储为 key，显示经翻译；resolve_unit
+#     翻译，未知 key / 旧字面量原样返回，向后兼容旧用户库与内置库）----
+CONSUMABLE_UNIT_PIECE: Final = "piece"      # 个
+CONSUMABLE_UNIT_GRAIN: Final = "grain"      # 粒
+CONSUMABLE_UNIT_SHEET: Final = "sheet"      # 片
+CONSUMABLE_UNIT_BOTTLE: Final = "bottle"    # 瓶
+CONSUMABLE_UNIT_TUBE: Final = "tube"        # 支
+CONSUMABLE_UNIT_BAG: Final = "bag"          # 袋
+CONSUMABLE_UNIT_BOX: Final = "box"          # 盒
+CONSUMABLE_UNIT_PACK: Final = "pack"        # 包
+CONSUMABLE_UNIT_SET: Final = "set"          # 套
+CONSUMABLE_UNIT_GROUP: Final = "group"      # 组
+CONSUMABLE_UNIT_CELL: Final = "cell"        # 节
+CONSUMABLE_UNIT_BLOCK: Final = "block"      # 块
+CONSUMABLE_UNIT_ITEM: Final = "item"        # 件
+CONSUMABLE_UNIT_ROLL: Final = "roll"        # 卷
+CONSUMABLE_UNIT_ML: Final = "ml"            # 毫升
+CONSUMABLE_UNIT_L: Final = "l"              # 升
+CONSUMABLE_UNIT_G: Final = "g"              # 克
+CONSUMABLE_UNIT_KG: Final = "kg"            # 千克
+
+CONSUMABLE_UNITS: Final[tuple[str, ...]] = (
+    CONSUMABLE_UNIT_PIECE,
+    CONSUMABLE_UNIT_GRAIN,
+    CONSUMABLE_UNIT_SHEET,
+    CONSUMABLE_UNIT_BOTTLE,
+    CONSUMABLE_UNIT_TUBE,
+    CONSUMABLE_UNIT_BAG,
+    CONSUMABLE_UNIT_BOX,
+    CONSUMABLE_UNIT_PACK,
+    CONSUMABLE_UNIT_SET,
+    CONSUMABLE_UNIT_GROUP,
+    CONSUMABLE_UNIT_CELL,
+    CONSUMABLE_UNIT_BLOCK,
+    CONSUMABLE_UNIT_ITEM,
+    CONSUMABLE_UNIT_ROLL,
+    CONSUMABLE_UNIT_ML,
+    CONSUMABLE_UNIT_L,
+    CONSUMABLE_UNIT_G,
+    CONSUMABLE_UNIT_KG,
+)
+
+# 单位键 → 显示文本由 translations/selector.units.options.<key> 提供（en.json 为兜底语言），
+# 此处不再另存一份默认标签，避免与翻译文件双份维护。
+def resolve_unit(unit: str | None, labels: dict[str, str]) -> str | None:
+    """把存储的单位键翻译为当前语言显示文本；非已知键（旧字面量 / 空）原样返回。"""
+    if not unit:
+        return unit
+    return labels.get(f"unit.{unit}", unit)
+
 # ---- 库存条目：配置界面（添加 / 修改 / 删除库存项）----
 CONF_STOCK_ITEMS: Final = "stock_items"
 # 库存项字段

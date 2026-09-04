@@ -109,6 +109,28 @@
         "custom_consumable": "自定义耗材"
       }
     },
+    "units": {
+      "options": {
+        "piece": "个",
+        "grain": "粒",
+        "sheet": "片",
+        "bottle": "瓶",
+        "tube": "支",
+        "bag": "袋",
+        "box": "盒",
+        "pack": "包",
+        "set": "套",
+        "group": "组",
+        "cell": "节",
+        "block": "块",
+        "item": "件",
+        "roll": "卷",
+        "ml": "毫升",
+        "l": "升",
+        "g": "克",
+        "kg": "千克"
+      }
+    },
     "service_action": {
       "options": {
         "add": "增加",

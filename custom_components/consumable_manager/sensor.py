@@ -24,6 +24,7 @@ from .const import (
     CONF_LIFESPAN_UNIT,
     CONF_UNIT,
     GROUP_KIND_CUSTOM,
+    resolve_unit,
     UNIT_DAYS,
     UNIT_HOURS,
     UNIT_MINUTES,
@@ -125,6 +126,14 @@ class StockItemSensor(CoordinatorEntity[StockCoordinator], SensorEntity):
     @property
     def extra_state_attributes(self) -> dict:
         return self.coordinator.item_attributes(self._item_id)
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """单位按当前语言翻译（存储为 locale 无关键，经 selector 翻译表解析）。"""
+        unit = self.entity_description.native_unit_of_measurement
+        if unit is None:
+            return None
+        return resolve_unit(unit, self.coordinator._labels)
 
 class StockStatusSensor(CoordinatorEntity[StockCoordinator], SensorEntity):
     """库存汇总实体：主状态 = 正常 / 库存不足（枚举）。"""

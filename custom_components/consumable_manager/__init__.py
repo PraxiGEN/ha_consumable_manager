@@ -11,7 +11,7 @@ from .const import (
     DOMAIN, LOGGER, NOTIFY_DEFAULT_SCHEDULE_TIME, PLATFORMS,
     CONF_ENTRY_TYPE, CONF_NOTIFICATION, CONF_NOTIFY_MODE,
     CONF_NOTIFY_SCHEDULE_TIME, ENTRY_TYPE_NOTIFICATION,
-    NOTIFY_MODE_SCHEDULED, NOTIFY_TEXTS, TODO_KINDS,
+    CONSUMABLE_UNITS, NOTIFY_MODE_SCHEDULED, NOTIFY_TEXTS, TODO_KINDS,
 )
 from . import bindings
 from .coordinator import ConsumableManagerData, build_coordinator
@@ -30,7 +30,7 @@ type ConsumableManagerConfigEntry = ConfigEntry[ConsumableManagerData]
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 def _async_labels(hass: HomeAssistant) -> dict[str, str]:
-    """运行文案标签（翻译缓存；todo_kind + notify_text 共用一张表）。"""
+    """运行文案标签（翻译缓存；todo_kind + notify_text + 计量单位共用一张表）。"""
     translations = translation.async_get_cached_translations(
         hass, hass.config.language, "selector", integration=DOMAIN
     )
@@ -42,6 +42,10 @@ def _async_labels(hass: HomeAssistant) -> dict[str, str]:
     for key in NOTIFY_TEXTS:
         labels[key] = translations.get(
             f"component.{DOMAIN}.selector.notify_text.options.{key}", key
+        )
+    for unit in CONSUMABLE_UNITS:
+        labels[f"unit.{unit}"] = translations.get(
+            f"component.{DOMAIN}.selector.units.options.{unit}", unit
         )
     return labels
 
