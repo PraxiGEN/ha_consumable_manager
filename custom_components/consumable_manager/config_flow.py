@@ -419,6 +419,10 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
                 errors[CONF_ITEM_NAME] = "required"
             if not model:
                 errors[CONF_MODEL] = "required"
+            elif not model.isascii():
+                # model 参与 id 推导/去重且用户库可对外 PR，写入层强制 ASCII，
+                # 此处预检给出明确文案（避免落入 LibraryError 的笼统映射）
+                errors[CONF_MODEL] = "model_ascii"
             if raw_unit is not None and not raw_unit:
                 errors[CONF_UNIT] = "required"
             if not errors:

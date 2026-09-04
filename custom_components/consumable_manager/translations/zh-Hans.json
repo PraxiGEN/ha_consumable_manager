@@ -27,11 +27,12 @@
       "item_not_found": "未找到该库存项"
     },
     "error": {
-      "required": "此项必填",
-      "invalid_key": "类型键仅允许小写字母、数字与下划线",
-      "key_exists": "该类型键已存在",
-      "invalid": "格式无效",
-      "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）"
+  "required": "此项必填",
+  "invalid_key": "类型键仅允许小写字母、数字与下划线",
+  "key_exists": "该类型键已存在",
+  "invalid": "格式无效",
+  "no_channel": "请至少选择一个通知渠道（系统通知或通知实体）",
+  "model_ascii": "型号仅支持英文/数字字符（参与耗材 ID 生成与去重）"
     }
   },
   "selector": {
