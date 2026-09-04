@@ -72,6 +72,7 @@ LABELS = {
     "last_replaced": "上次更换", "consumables": "耗材",
     "desc_area": "区域", "desc_device": "设备", "desc_entity": "实体",
     "desc_specs": "规格", "desc_threshold": "阈值", "unknown": "未知",
+    "data_suffix": "数据",
 }
 
 def _stub_update_entry(entry, **kwargs) -> None:
