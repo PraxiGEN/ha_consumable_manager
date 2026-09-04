@@ -1,7 +1,6 @@
 """耗材管理器 服务平台。"""
 from __future__ import annotations
 
-import json
 from typing import Any
 
 from homeassistant.core import (
@@ -47,14 +46,6 @@ def _type_coordinators( hass: HomeAssistant, ) -> list[ConsumableTypeCoordinator
             result.append(coord)
     return result
 
-def _find_type_coordinator(hass: HomeAssistant,
-    cons_type: str,
-) -> ConsumableTypeCoordinator | None:
-    for coord in _type_coordinators(hass):
-        if coord.cons_type == cons_type:
-            return coord
-    return None
-
 async def _refresh_coordinator_libraries(hass: HomeAssistant) -> None:
     """写库服务成功后：重新加载合并库并更新全部类型协调器的库引用 + 触发刷新，
     使待办/通知描述立即反映新设备映射 / 新耗材（无需重启 HA）。"""
@@ -77,7 +68,10 @@ def _coerce_item_id( hass: HomeAssistant, raw: str | None ) -> str | None:
     reg = er.async_get(hass)
     reg_entry = reg.async_get(raw)
     if reg_entry is not None and reg_entry.unique_id:
-        return str(reg_entry.unique_id).split("_", 1)[1]
+        # unique_id 约定为 {entry_id}_{item_id}；缺 "_"（非本集成实体等
+        # 防御分支）时原样返回，不抛 IndexError
+        uid = str(reg_entry.unique_id)
+        return uid.split("_", 1)[1] if "_" in uid else raw
     return raw
 
 def _resolve_group_id(
@@ -270,29 +264,6 @@ async def async_unbind_entity(hass: HomeAssistant,
     }
 
 # ---- 服务：添加耗材 / 设备映射（写入用户库，本地覆盖层） ----
-def _to_str_list(value: Any) -> list[str]:
-    """把服务入参规整为字符串数组：列表直接用，字符串按 JSON / 逗号解析。"""
-    if value is None:
-        return []
-    if isinstance(value, str):
-        value = value.strip()
-        if not value:
-            return []
-        try:
-            parsed = json.loads(value)
-            if isinstance(parsed, list):
-                return [str(x) for x in parsed]
-        except ValueError:
-            pass
-        return [
-            x.strip()
-            for x in value.replace("，", ",").split(",")
-            if x.strip()
-        ]
-    if isinstance(value, (list, tuple)):
-        return [str(x) for x in value]
-    return []
-
 async def async_add_consumable(hass: HomeAssistant,
     call: ServiceCall,
 ) -> dict[str, Any]:

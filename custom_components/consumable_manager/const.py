@@ -265,6 +265,7 @@ NOTIFY_TEXT_DESC_ENTITY: Final = "desc_entity"  # 「实体」
 NOTIFY_TEXT_DESC_SPECS: Final = "desc_specs"  # 「规格」（耗材库 meta）
 NOTIFY_TEXT_DESC_THRESHOLD: Final = "desc_threshold"  # 「阈值」（库存描述）
 NOTIFY_TEXT_UNKNOWN: Final = "unknown"  # 「未知」（未绑定耗材）
+NOTIFY_TEXT_DATA_SUFFIX: Final = "data_suffix"  # 「数据」（分组数据传感器名后缀）
 NOTIFY_TEXTS: Final[tuple[str, ...]] = (
     NOTIFY_TEXT_LOW_STOCK,
     NOTIFY_TEXT_REPLACE_NEEDED,
@@ -276,6 +277,7 @@ NOTIFY_TEXTS: Final[tuple[str, ...]] = (
     NOTIFY_TEXT_DESC_SPECS,
     NOTIFY_TEXT_DESC_THRESHOLD,
     NOTIFY_TEXT_UNKNOWN,
+    NOTIFY_TEXT_DATA_SUFFIX,
 )
 
 # ---- 条目排序前缀（图标排在文字前 → 固定置顶；协调器展示前剥离）----

@@ -530,16 +530,9 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             }),
         )
 
-    def _unit_options(self, current: str | None = None) -> list[str]:
-        """耗材单位下拉（locale 无关键 + translation_key 自动翻译；兼容旧字面量）。
-
-        current 为既有库存项单位：若是非已知键的旧字面量（如「个」），
-        前置为一项以保证默认值合法（selector 拒绝非法默认）。
-        """
-        opts: list[str] = list(CONSUMABLE_UNITS)
-        if current and current not in CONSUMABLE_UNITS:
-            opts = [current, *opts]
-        return opts
+    def _unit_options(self) -> list[str]:
+        """耗材单位下拉（locale 无关键 + translation_key 自动翻译）。"""
+        return list(CONSUMABLE_UNITS)
 
     def _item_schema(self,
         item: dict[str, Any] | None = None,
@@ -554,7 +547,7 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             vol.Required(CONF_ITEM_TYPE, default=item_type): _sel(type_options or []),
             vol.Required(CONF_MODEL, default=item.get(CONF_MODEL) or ""): _text(),
             vol.Optional(CONF_UNIT, default=item.get(CONF_UNIT) or CONSUMABLE_UNIT_PIECE):
-                _sel(self._unit_options(item.get(CONF_UNIT)), "units"),
+                _sel(self._unit_options(), "units"),
             vol.Required(CONF_QUANTITY, default=item.get(CONF_QUANTITY, 0)):
                 _num(-9999),
             vol.Required(CONF_STOCK_THRESHOLD,
@@ -576,10 +569,8 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             step_id="add_group",
             data_schema=vol.Schema({
                 vol.Required(CONF_GROUP_KIND, default=GROUP_KIND_BINDING):
-                    _sel([
-                        _opt(GROUP_KIND_BINDING, "绑定实体"),
-                        _opt(GROUP_KIND_CUSTOM, "自定义耗材实体"),
-                    ]),
+                    # 标签经 selector.group_kind.options.* 翻译（不在代码硬编码文案）
+                    _sel([GROUP_KIND_BINDING, GROUP_KIND_CUSTOM], "group_kind"),
             }),
         )
 
@@ -589,12 +580,20 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
         """修改分组：先选一个分组，再进入对应编辑表单（仿库存 select_item）。"""
         if user_input is not None:
             gid = user_input[CONF_SELECTED_GROUP]
-            for i, g in enumerate(self._current_groups()):
-                if g.get(CONF_GROUP_ID) == gid:
-                    self._group_edit_idx = i
-                    break
+            groups = self._current_groups()
+            # 显式查找命中索引：不依赖循环变量泄漏；group_id 未命中
+            # （表单陈旧 / options 被并发修改）时中止而不是走错表单分支
+            idx = next(
+                (i for i, g in enumerate(groups)
+                 if g.get(CONF_GROUP_ID) == gid),
+                None,
+            )
+            if idx is None:
+                return self.async_abort(reason="group_not_found")
+            self._group_edit_idx = idx
+            group = groups[idx]
             return await (self.async_step_custom_entity()
-                          if g.get(CONF_GROUP_KIND) == GROUP_KIND_CUSTOM
+                          if group.get(CONF_GROUP_KIND) == GROUP_KIND_CUSTOM
                           else self.async_step_group())
         return self.async_show_form(
             step_id="select_group",
@@ -741,6 +740,14 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
                 errors["added_at"] = "required"
             elif lifespan in (None, ""):
                 errors["lifespan"] = "required"
+            elif (
+                not isinstance(lifespan, (int, float))
+                or isinstance(lifespan, bool)
+                or lifespan <= 0
+            ):
+                # 冗余校验（UI 数字框之外的第二道闸）：非正数寿命会让
+                # 倒计时恒为逾期 → 永久误报
+                errors["lifespan"] = "invalid"
             else:
                 gid = group.get(CONF_GROUP_ID) or uuid4().hex[:8]
                 synthetic_id = custom_consumable_entity_id(
@@ -846,11 +853,7 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
 
     async def _sync_custom_binding(self,
             entity_id: str, consumable_id: str | None) -> None:
-        """自定义耗材实体创建/编辑后，把「绑定耗材」写入 bindings Store 层。
-
-        与实体组共用同一 bindings 层：创建时即按合成数据实体 id 写入，
-        用户之后也可用 bind_entity 服务按此 id 重绑 / 解绑。
-        """
+        """自定义耗材实体创建/编辑后，把「绑定耗材」写入 bindings Store 层。"""
         if consumable_id:
             await bindings.async_set_binding(
                 self.hass, entity_id, consumable_id)
@@ -858,9 +861,9 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             await bindings.async_remove_binding(self.hass, entity_id)
 
     def _group_options(self) -> list[dict[str, str]]:
-        """分组下拉（label = 分组名，value = group_id）。"""
+        """分组下拉（label = 分组名；无名兜底分组 id，locale 无关）。"""
         return [
-            {"label": g.get(CONF_GROUP_NAME, "未命名"),
+            {"label": g.get(CONF_GROUP_NAME) or g.get(CONF_GROUP_ID, "group"),
              "value": g.get(CONF_GROUP_ID, "")}
             for g in self._current_groups()
         ]

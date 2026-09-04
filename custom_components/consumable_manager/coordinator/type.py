@@ -102,7 +102,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             return [
                 {
                     CONF_GROUP_ID: "default",
-                    CONF_GROUP_NAME: self.title or "默认",
+                    CONF_GROUP_NAME: self.title or "default",
                     CONF_SOURCE_ENTITIES: flat,
                 }
             ]
@@ -429,7 +429,9 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         added = self._custom_added_at(group)
         lifespan = _to_float(group.get(CONF_LIFESPAN))
         unit = group.get(CONF_LIFESPAN_UNIT, UNIT_DAYS)
-        if added is None or lifespan is None:
+        # 冗余校验：寿命缺失 / 非正数视为无效配置 → 无倒计时（None），
+        # 评估阈值收到 None 不触发，避免 0/负寿命造成永久逾期误报。
+        if added is None or lifespan is None or lifespan <= 0:
             return None
         factor = TIME_UNIT_TO_HOURS.get(unit, 24.0)
         deadline = added + timedelta(hours=lifespan * factor)

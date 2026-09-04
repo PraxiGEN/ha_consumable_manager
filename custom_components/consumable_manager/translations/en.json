@@ -27,12 +27,12 @@
       "item_not_found": "Stock item not found"
     },
     "error": {
-  "required": "This field is required",
-  "invalid_key": "Type key allows only lowercase letters, digits and underscores",
-  "key_exists": "This type key already exists",
-  "invalid": "Invalid format",
-  "no_channel": "Select at least one notification channel (system notification or entities)",
-  "model_ascii": "Model accepts ASCII letters and digits only (used for ID generation and dedup)"
+      "required": "Required",
+      "invalid_key": "Only lowercase letters, digits and underscores",
+      "key_exists": "This key already exists",
+      "invalid": "Invalid value",
+      "no_channel": "Select at least one notification channel (system notification or entities)",
+      "model_ascii": "Model accepts ASCII letters and digits only (used for ID generation and dedup)"
     }
   },
   "selector": {
@@ -89,7 +89,8 @@
         "desc_entity": "Entity",
         "desc_specs": "Specs",
         "desc_threshold": "Threshold",
-        "unknown": "Unknown"
+        "unknown": "Unknown",
+        "data_suffix": "Data"
       }
     },
     "notify_mode": {
@@ -146,12 +147,20 @@
         "types": "Consumable types",
         "consumables": "Consumables"
       }
+    },
+    "group_kind": {
+      "options": {
+        "binding": "Bind entities",
+        "custom_consumable_entity": "Custom consumable entity"
+      }
     }
   },
   "options": {
     "error": {
       "no_channel": "Select at least one notification channel (system notification or entities)",
-      "invalid": "Invalid format"
+      "invalid": "Invalid value",
+      "required": "Required",
+      "model_ascii": "Model must be ASCII (letters/digits)"
     },
     "step": {
       "add_item": {
@@ -292,6 +301,10 @@
         "description": "Choose the threshold type, value, unit, and comparison (greater than / less than / equal).",
         "title": "Set threshold"
       }
+    },
+    "abort": {
+      "item_not_found": "Stock item not found",
+      "group_not_found": "Group not found (it may have been deleted); reopen the options screen"
     }
   },
   "entity": {
@@ -604,4 +617,3 @@
     }
   }
 }
-

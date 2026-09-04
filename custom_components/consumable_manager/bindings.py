@@ -1,6 +1,7 @@
 """实体↔耗材 绑定映射。"""
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -15,12 +16,23 @@ STORAGE_VERSION = 1
 # 按 hass config 路径分键，避免多实例（如测试）串味
 _STORES: dict[str, Store] = {}
 _BINDINGS_CACHE: dict[str, dict[str, str]] = {}
+# 读-改-写互斥锁（每 hass 一把）：并发 bind/unbind 不丢写
+_LOCKS: dict[str, asyncio.Lock] = {}
 # 已异步预热过的 hass（见 async_prime）：预热后同步读只走内存，不碰磁盘
 _PRIMED: set[str] = set()
 
 def _cache_key(hass: HomeAssistant) -> str:
     """缓存分键：用 config 路径（含 Store key）保证多 hass 实例隔离。"""
     return hass.config.path(STORAGE_KEY)
+
+def _lock(hass: HomeAssistant) -> asyncio.Lock:
+    """取得（或惰性创建）当前 hass 的写锁。"""
+    key = _cache_key(hass)
+    lock = _LOCKS.get(key)
+    if lock is None:
+        lock = asyncio.Lock()
+        _LOCKS[key] = lock
+    return lock
 
 def _store(hass: HomeAssistant) -> Store:
     """取得（或惰性创建）当前 hass 的 Store 实例。"""
@@ -99,18 +111,20 @@ async def _async_current(hass: HomeAssistant) -> dict[str, str]:
 async def async_set_binding(
     hass: HomeAssistant, entity_id: str, consumable_id: str
 ) -> None:
-    """建立/更新一条实体↔耗材绑定（经 Store 原子持久化）。"""
-    data = dict(await _async_current(hass))
-    data[entity_id] = consumable_id
-    _BINDINGS_CACHE[_cache_key(hass)] = data
-    await _store(hass).async_save(data)
-
-async def async_remove_binding(hass: HomeAssistant, entity_id: str) -> bool:
-    """删除一条绑定；返回是否真的删除了。"""
-    data = dict(await _async_current(hass))
-    if entity_id in data:
-        del data[entity_id]
+    """建立/更新一条实体↔耗材绑定（经 Store 原子持久化，锁内读-改-写）。"""
+    async with _lock(hass):
+        data = dict(await _async_current(hass))
+        data[entity_id] = consumable_id
         _BINDINGS_CACHE[_cache_key(hass)] = data
         await _store(hass).async_save(data)
-        return True
-    return False
+
+async def async_remove_binding(hass: HomeAssistant, entity_id: str) -> bool:
+    """删除一条绑定；返回是否真的删除了（锁内读-改-写）。"""
+    async with _lock(hass):
+        data = dict(await _async_current(hass))
+        if entity_id in data:
+            del data[entity_id]
+            _BINDINGS_CACHE[_cache_key(hass)] = data
+            await _store(hass).async_save(data)
+            return True
+        return False
