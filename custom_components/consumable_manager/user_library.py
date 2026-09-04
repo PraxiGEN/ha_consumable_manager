@@ -250,6 +250,13 @@ def write_user_consumable(
             raise LibraryError(
                 f"自定义耗材缺少必填字段 {label}，无法写入用户库"
             )
+    # model 参与耗材 id 推导与库间去重（model.lower() 比对），且用户库可对外 PR
+    # （ingest.py 强制 model ASCII）——运行期写入同样强制，避免中文型号回流。
+    if not model.isascii():
+        raise LibraryError(
+            f"自定义耗材型号 model {model!r} 含非 ASCII 字符，"
+            "型号须为英文/数字，无法写入用户库"
+        )
     cid = _consumable_id(cons_type, model, name)
     builtin = load_library()
     data = _load_user_data(path)
