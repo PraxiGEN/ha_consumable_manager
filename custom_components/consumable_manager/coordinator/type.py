@@ -540,10 +540,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
                 if c is not None:
                     consumable_name = c.display_name(self.hass.config.language)
             state = self.hass.states.get(entity_id)
-            state_name = (
-                getattr(state, "name", None)
-                or (state.attributes.get("friendly_name") if state else None)
-            )
+            state_name = state.attributes.get("friendly_name") if state else None
             display = (
                 state_name
                 or snapshot.get("device_name")
@@ -646,10 +643,9 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         }
         snapshot = snapshots.get(entity_id, {})
         state = self.hass.states.get(entity_id)
-        state_name = (
-            getattr(state, "name", None)
-            or (state.attributes.get("friendly_name") if state else None)
-        )
+        # 仅取 friendly_name：HA 2026.1 起 State.name 兜底 object_id 恒非空，
+        # 若用它判断会抢占「设备名 → 实体 id」回退链（同 _replace_description）。
+        state_name = state.attributes.get("friendly_name") if state else None
         # 显示名取值：friendly_name 优先（用户自定义实体名），
         # 其次设备注册表设备名，最后实体 id。
         display = (
@@ -672,10 +668,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             if area := self._entity_area(eid):
                 lines.append(self._md_kv(NOTIFY_TEXT_DESC_AREA, area))
             state = self.hass.states.get(eid)
-            state_name = (
-                getattr(state, "name", None)
-                or (state.attributes.get("friendly_name") if state else None)
-            )
+            state_name = state.attributes.get("friendly_name") if state else None
             # 正则/手动匹配的实体没有绑定快照（不在 source_snapshots 中），
             # 但若它们后续被显式绑定（bind 服务写入 consumable_id），此处透传
             # entity_id 即可被快照命中；未绑定的实体显示「未知」。
@@ -885,10 +878,7 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         ):
             snapshot = snapshots.get(entity_id, {})
             state = self.hass.states.get(entity_id)
-            state_name = (
-                getattr(state, "name", None)
-                or (state.attributes.get("friendly_name") if state else None)
-            )
+            state_name = state.attributes.get("friendly_name") if state else None
             # friendly_name 优先（用户自定义实体名），其次设备名，最后实体 id
             display = (
                 state_name
