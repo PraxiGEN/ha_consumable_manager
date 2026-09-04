@@ -30,7 +30,7 @@ from .const import (
     CONF_GROUP_NAME, GROUP_KIND_BINDING, GROUP_KIND_CUSTOM,
     CONF_SELECTED_GROUP, CONF_REMOVE_GROUPS,
     CONF_THRESHOLD, CONF_THRESHOLD_OPERATOR, CONF_THRESHOLD_TYPE,
-    CONF_THRESHOLD_UNIT, CONF_UNIT, DEFAULT_THRESHOLD, CONF_LIFESPAN, CONF_LIFESPAN_UNIT, custom_consumable_entity_id,
+    CONF_THRESHOLD_UNIT, CONF_UNIT, CONSUMABLE_UNITS, CONSUMABLE_UNIT_PIECE, DEFAULT_THRESHOLD, CONF_LIFESPAN, CONF_LIFESPAN_UNIT, custom_consumable_entity_id,
     DEFAULT_THRESHOLD_TYPE, DEFAULT_THRESHOLD_UNIT, ENTRY_SORT_PREFIXES,
     ENTRY_TYPE_CUSTOM, ENTRY_TYPE_NOTIFICATION, ENTRY_TYPE_STOCK,
     CONF_TYPE_KEY, CONF_TYPE_NAME_ZH, CONF_TYPE_ICON, CONF_TYPE_THRESHOLD_TYPE,
@@ -411,14 +411,15 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             item_type = user_input.get(CONF_ITEM_TYPE) or ""
             name = str(user_input.get(CONF_ITEM_NAME, "")).strip()
             raw_unit = user_input.get(CONF_UNIT)
-            unit = raw_unit or "个"
+            # 显式清空单位 → 报错（宁报错不写坏库）；未提交才兜底默认单位
+            unit = raw_unit or CONSUMABLE_UNIT_PIECE
             model = user_input.get(CONF_MODEL) or ""
             errors: dict[str, str] = {}
             if not name:
                 errors[CONF_ITEM_NAME] = "required"
             if not model:
                 errors[CONF_MODEL] = "required"
-            if raw_unit == "":
+            if raw_unit is not None and not raw_unit:
                 errors[CONF_UNIT] = "required"
             if not errors:
                 try:
@@ -525,6 +526,17 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             }),
         )
 
+    def _unit_options(self, current: str | None = None) -> list[str]:
+        """耗材单位下拉（locale 无关键 + translation_key 自动翻译；兼容旧字面量）。
+
+        current 为既有库存项单位：若是非已知键的旧字面量（如「个」），
+        前置为一项以保证默认值合法（selector 拒绝非法默认）。
+        """
+        opts: list[str] = list(CONSUMABLE_UNITS)
+        if current and current not in CONSUMABLE_UNITS:
+            opts = [current, *opts]
+        return opts
+
     def _item_schema(self,
         item: dict[str, Any] | None = None,
         default_type: str | None = None,
@@ -537,7 +549,8 @@ class ConsumableManagerOptionsFlow(OptionsFlow):
             vol.Required(CONF_ITEM_NAME, default=item.get(CONF_ITEM_NAME, "")): _text(),
             vol.Required(CONF_ITEM_TYPE, default=item_type): _sel(type_options or []),
             vol.Required(CONF_MODEL, default=item.get(CONF_MODEL) or ""): _text(),
-            vol.Optional(CONF_UNIT, default=item.get(CONF_UNIT) or "个"): _text(),
+            vol.Optional(CONF_UNIT, default=item.get(CONF_UNIT) or CONSUMABLE_UNIT_PIECE):
+                _sel(self._unit_options(item.get(CONF_UNIT)), "units"),
             vol.Required(CONF_QUANTITY, default=item.get(CONF_QUANTITY, 0)):
                 _num(-9999),
             vol.Required(CONF_STOCK_THRESHOLD,
