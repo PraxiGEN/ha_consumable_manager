@@ -5,8 +5,7 @@ import json
 import re
 from pathlib import Path
 
-INTEGRATION = Path(__file__).resolve().parent.parent   # tests_ha 的上级 = 集成目录
-REPO_ROOT = INTEGRATION.parent.parent                  # custom_components 的上级 = 仓库根
+from _helpers import INTEGRATION, REPO_ROOT
 
 def check(desc: str, cond: bool) -> None:
     """离线 harness 的 check(desc, cond) 断言 → pytest assert。"""

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from homeassistant.exceptions import ServiceValidationError
 from _helpers import (
+    INTEGRATION,
     LABELS,
     check,
     clean_persist,
@@ -42,7 +43,7 @@ from consumable_manager.const import (
 
 from consumable_manager import services as svc
 
-_INTEGRATION_DIR = Path(__file__).resolve().parent.parent   # tests_ha 的上级 = 集成目录
+_INTEGRATION_DIR = INTEGRATION  # 集成目录（_helpers 按 manifest.json 自适应定位）
 
 # ---- 用例 ----
 async def test_services(hass, monkeypatch) -> None:

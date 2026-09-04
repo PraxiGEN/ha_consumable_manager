@@ -1,34 +1,40 @@
-# 耗材管理器集成真环境测试（pytest-homeassistant-custom-component）CI
 name: Run Tests
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
-  pytest:
-    name: pytest on real HA (Python ${{ matrix.python-version }})
+  pytest-ha:
     runs-on: ubuntu-latest
     strategy:
-      fail-fast: false
       matrix:
+        # 集成最低支持 Python 3.13（与 HA 2026.1 最低要求一致）
         python-version: ["3.13"]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install dependencies
+      - name: Install test dependencies
         run: |
           python -m pip install --upgrade pip
-          # 钉 0.13.305：对应 homeassistant==2026.1.0（集成声明最低支持版本）
-          pip install pytest pytest-asyncio voluptuous "pytest-homeassistant-custom-component==0.13.305"
-          # 集成自身无第三方依赖（manifest.json requirements 为空），无需额外安装
+          # pytest-ha 0.13.305 锁定 homeassistant==2026.1.0（与本地 WSL 验证版本一致）。
+          # 本集成 manifest requirements 为空：导入链仅需 HA 本体 + 标准库，
+          # 无需 lunar_python / home-assistant-frontend 等额外依赖。
+          # 不单独安装 pytest：pytest-ha 依赖里带精确 pin 的 pytest，单独装会覆盖破坏兼容。
+          python -m pip install "pytest-homeassistant-custom-component==0.13.305"
 
-      - name: Run pytest (real HA env)
-        run: |
-          python -m pytest tests/ -v
+      - name: Verify test plugin is importable
+        run: python -c "import pytest_homeassistant_custom_component; print('pytest_homeassistant_custom_component import OK')"
+
+      - name: Run pytest (real HA environment)
+        # tests/ 在仓库根；用例为裸 async def，asyncio_mode=auto 由仓库根 pytest.ini 提供
+        run: python -m pytest tests/ -v
