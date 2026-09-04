@@ -1,101 +1,106 @@
-# <img src="custom_components/consumable_manager/brand/icon.png" width="64"> 📦 耗材管理器 (Consumable Manager)
+<div align="right">
+  <strong>English</strong> | <a href="./README_CN.md">中文版</a>
+</div>
+
+# <img src="custom_components/consumable_manager/brand/icon.png" width="64"> 📦 Consumable Manager
 
 [![Release](https://img.shields.io/github/v/release/PraxiGEN/ha_consumable_manager)](https://github.com/PraxiGEN/ha_consumable_manager/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/PraxiGEN/ha_consumable_manager/blob/main/LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
-## 耗材管理器不只是库存计数器——它把「设备耗材状态监控、库存管理、更换待办、到期提醒通知、自动化服务」整合成一套完整的家庭耗材生命周期管理体系。所有数据本地离线运行，不依赖任何云服务。
+## Consumable Manager is more than an inventory counter — it combines "device consumable status monitoring, stock management, replacement to-dos, due-date reminder notifications, and automation services" into one complete household consumable lifecycle management system. All data is processed locally and offline, with no dependency on any cloud service.
 
-## ✨ 核心特性
+## ✨ Core Features
 
-### 系统使用本地内置库作为数据源，所有逻辑均在本地离线计算完成。
+### The system uses a local built-in library as its data source; all logic is computed locally and offline.
 
-### 🗂️ 耗材类型监控 (Monitoring)
-- **内置类型**：开箱即用——电池、净化设备滤芯、打印机耗材、扫地机耗材、净水器耗材。🔋
-- **自定义类型**：添加界面内置类型向导，键名、图标、默认阈值一站配齐，与内置类型平起平坐。🧩
-- **阈值判定**：剩余寿命（%）、剩余时间、已使用时长三种阈值类型；大于 / 小于 / 等于三种触发方式；单位支持 % / 分钟 / 小时 / 天。
-- **批量绑定**：正则表达式一次性批量匹配实体，或手动多选；**支持绑定群组（group.xxx），成员自动展开监控、动态跟随增减**。🔭
-- **多语言**：内置库类型 / 耗材 / 设备名称按 HA 界面语言自动切换，内置中英双语。
+### 🗂️ Consumable Type Monitoring
+- **Built-in types**: ready out of the box — batteries, purifier filters, printer consumables, robot vacuum consumables, water purifier consumables. 🔋
+- **Custom types**: the add dialog ships with a built-in type wizard — key, icon, and default threshold configured in one go, on equal footing with built-in types. 🧩
+- **Threshold rules**: three threshold types (remaining life %, remaining time, elapsed usage time); three trigger modes (greater than / less than / equal); units support % / minutes / hours / days.
+- **Batch binding**: match entities in bulk with a regular expression, or pick them manually; **group entities (`group.xxx`) are supported — members are automatically expanded for monitoring and dynamically followed as they change**. 🔭
+- **Group monitoring**: create multiple groups within one entry — binding-entity groups (manual multi-select + regex dynamic enrollment, with per-group thresholds) and custom consumable entities (self-built countdown data, evaluated by elapsed usage). Each group gets its own diagnostic and data sensors. 🧮
+- **Multi-language**: built-in library type / consumable / device names switch automatically with the HA interface language; Chinese and English included.
 
-### 📦 库存管理 (Stock)
-- **库存项台账**：每个耗材一条库存项——名称、关联类型、型号、单位、数量、库存阈值。
-- **常用耗材一键入库**：从内置库下拉选择，名称 / 单位 / 图标自动带出。
-- **更换自动扣减**：勾选「更换」待办即记录更换时间并自动扣减关联库存项数量。➖
-- **欠货负库存**：数量可为负（表示欠货），欠货时实体切换警示图标。
+### 📦 Stock Management
+- **Stock ledger**: one stock item per consumable — name, linked type, model, unit, quantity, and stock threshold.
+- **One-click common consumables**: pick from the built-in library dropdown; name / unit / icon are filled in automatically.
+- **Automatic deduction on replacement**: checking the "Replace" to-do records the replacement time and automatically deducts the linked stock item. ➖
+- **Negative stock (backorder)**: quantity may go negative (indicating a backorder); the entity switches to a warning icon when in backorder.
 
-### ✅ 待办联动 (Todo)
-- **更换待办**：耗材越过阈值自动生成「更换 XX」待办，勾选完成 = 已更换。🔄
-- **购买待办**：库存低于阈值自动生成「购买」待办，清单化采购。🛒
-- **原生体验**：基于 HA 原生待办平台，支持手机桌面小组件、日期设置、手动增删。
+### ✅ To-do Integration
+- **Replacement to-dos**: crossing a threshold automatically creates a "Replace XX" to-do; checking it off means replaced. 🔄
+- **Purchase to-dos**: stock below threshold automatically creates a "Purchase" to-do for checklist-style procurement. 🛒
+- **Native experience**: built on the HA native to-do platform, with home-screen widgets, due dates, and manual add/remove support.
 
-### 🔔 通知推送 (Notify)
-- **双模式**：实时推送（触发即通知）/ 定时统一推送（每天固定时刻合并成一条）。⏰
-- **双样式**：人性化文案（「书房温湿度传感器电量低，请更换。」）/ 状态值（「书房温湿度传感器 18%」）。💬
-- **双渠道**：HA 系统通知 + notify 通知服务实体（App、短信网关等，可多选）。
-- **条目级覆盖**：全局统一配置，单个条目可按需覆盖渠道 / 样式 / 模式，甚至独立定时。
+### 🔔 Notifications
+- **Dual modes**: real-time push (notify on trigger) / scheduled digest (merge all alerts into one message at a fixed time each day). ⏰
+- **Dual styles**: human-friendly text ("Study temp-humidity sensor battery is low, please replace.") / state values ("Study temp-humidity sensor 18%"). 💬
+- **Dual channels**: HA system notification + notify service entities (mobile app, SMS gateway, etc., multi-select).
+- **Per-entry overrides**: global defaults with per-entry overrides of channel / style / mode — even an independent schedule.
 
-### 📚 双库架构 (Library)
-- **内置库**：随集成分发的类型 / 耗材 / 设备映射数据（`library/` 目录，中英多语言）。
-- **用户库**：本地 `config/.consumable_manager/user_library.json`，服务、配置界面均可写入，支持手工编辑。
-- **贡献回流**：用户库即贡献草稿——PR 到 `contributions/<用户名>/` 分支，GitHub Actions 自动组装进内置库，人人可丰富公共数据。🤝
+### 📚 Dual-Library Architecture
+- **Built-in library**: type / consumable data shipped with the integration (`library/` directory, Chinese & English). 
+- **User library**: local `config/.consumable_manager/user_library.json`, writable from services and the config UI, and editable by hand.
+- **Contribution loop**: your user library doubles as a contribution draft — PR it to `contributions/<your-github-username>/` on the main branch, and GitHub Actions assembles it into the built-in library automatically. 🤝
 
-### 🔌 自动化服务 (Services)
-- 7 个原生服务：绑定实体、查询绑定、添加耗材、添加设备映射、添加类型、提取数据、调整库存——配置界面与自动化脚本双入口。⚙️
+### 🔌 Automation Services
+- 7 native services: Bind Entity, Unbind Entity, Query Bindings, Add Consumable, Add Type, Query Data, Adjust Stock — accessible from both the config UI and automations/scripts. ⚙️
 
-## 📦 安装
+## 📦 Installation
 
-### 通过 HACS 安装（推荐）
+### Via HACS (recommended)
 
-1. 在 HACS 的"集成"部分，点击右上角的三点菜单
-2. 选择"自定义存储库"
-3. 在存储库字段输入：
+1. In HACS, under "Integrations", click the three-dot menu at the top right
+2. Select "Custom repositories"
+3. Enter this URL in the repository field:
 ```yaml
 https://github.com/PraxiGEN/ha_consumable_manager
 ```
-4. 类别选择"集成"
-5. 点击"添加"保存
-6. 在 HACS 中找到"耗材管理器"集成并点击安装
-7. 重启 Home Assistant
+4. Choose "Integration" as the category
+5. Click "Add" to save
+6. Find "Consumable Manager" in HACS and click install
+7. Restart Home Assistant
 
-### 手动安装
+### Manual installation
 
-1. 下载最新的：
+1. Download the latest release:
 ```yaml
 https://github.com/PraxiGEN/ha_consumable_manager
 ```
-2. 解压并将 `custom_components/consumable_manager` 文件夹放入 Home Assistant 的 `custom_components` 目录
-3. 重启 Home Assistant
+2. Extract and place the `custom_components/consumable_manager` folder into Home Assistant's `custom_components` directory
+3. Restart Home Assistant
 
-## 📖 文档导航
-- [🚀 详细配置与使用教程 (DOCS.md)](DOCS.md)
-- [📜 版本更新历史 (CHANGELOG.md)](md/CHANGELOG.md)
-- [📚 耗材库结构与贡献指南 (library/README.md)](custom_components/consumable_manager/library/README.md)
+## 📖 Documentation
+- [🚀 Detailed Configuration & Usage Guide (md/DOCS.md)](md/DOCS.md)
+- [📜 Changelog (md/CHANGELOG.md)](md/CHANGELOG.md)
+- [📚 Library Structure & Contribution Guide (library/README.md)](custom_components/consumable_manager/library/README.md)
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎贡献代码、报告问题、提出功能建议或贡献耗材数据！
+Contributions of code, bug reports, feature suggestions, and consumable data are all welcome!
 
-1. **提交 Issues**：报告问题或功能请求
-2. **提交 Pull Requests**：贡献代码改进
-3. **贡献耗材数据**：把你的用户库（`config/.consumable_manager/user_library.json`）PR 到 `contributions/<你的GitHub用户名>/` 目录，Actions 会自动组装进内置库，详见 [贡献指南](custom_components/consumable_manager/library/README.md)
+1. **Open Issues**: report problems or request features
+2. **Open Pull Requests**: contribute code improvements
+3. **Contribute consumable data**: PR your user library (`config/.consumable_manager/user_library.json`) to `contributions/<your-github-username>/` on the main branch — Actions will validate and assemble it into the built-in library automatically. See the [contribution guide](custom_components/consumable_manager/library/README.md)
 
-## 📄 许可证
+## 📄 License
 
-本项目基于 MIT 许可证开源。详情请查看 LICENSE 文件。
+This project is open-sourced under the MIT License. See the LICENSE file for details.
 
-## ❤️ 支持
+## ❤️ Support
 
-如果这个项目对您有帮助，请给项目点个 Star ⭐！
+If this project helps you, please give it a Star ⭐!
 
 ---
 
-## 兼容版本: 
+## Compatibility:
 
 - **Home Assistant 2026.1+**
-  
-  本集成最低兼容 HA 2026.1 及以上版本。
 
-- **为确保集成品牌图片正确显示，请选择 Home Assistant 2026.3+**
-  
-  为确保品牌图标能够正确显示，建议使用 HA 2026.3 或更高版本。
-  从 2026.3 起，Home Assistant 引入了 custom_integrations 目录与 Brands Proxy API，自定义集成可以在自身目录中直接包含品牌图片。
+  This integration requires HA 2026.1 or later.
+
+- **For the integration brand image to display correctly, use Home Assistant 2026.3+**
+
+  To ensure the brand icon displays correctly, HA 2026.3 or later is recommended.
+  Starting from 2026.3, Home Assistant introduced the custom_integrations directory and Brands Proxy API, allowing custom integrations to include brand images in their own directory.

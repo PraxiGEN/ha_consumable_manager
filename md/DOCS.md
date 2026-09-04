@@ -1,204 +1,223 @@
-# 📖 使用指南 (Documentation)
+# 📖 Documentation
 
-## ⚙️ 配置 (Configuration)
+## ⚙️ Configuration
 
-### 步骤 1：添加集成
+### Step 1: Add the integration
 
-1. 进入 Home Assistant 的 **设置 → 设备与服务 → 添加集成**。
-2. 搜索并选择 **耗材管理器 (Consumable Manager)**。
-3. 在「选择类型」界面选择要添加的条目类型：
+1. Go to **Settings → Devices & Services → Add Integration**.
+2. Search for and select **Consumable Manager**.
+3. In the "Choose entry type" dialog, pick the entry type to add:
 
-| 条目类型 | 说明 |
+| Entry type | Description |
 | :--- | :--- |
-| ⏰ **通知渠道设置** | 全局通知配置（推送渠道 / 模式 / 样式），不生成任何实体。 |
-| 📦 **耗材库存管理** | 库存台账：库存项的增删改查、数量与阈值。 |
-| 🗂️ **耗材类型**（电池 / 滤芯 / 打印机耗材 / 扫地机耗材 / 净水器耗材…） | 绑定设备实体，监控耗材状态并生成更换待办。列表来自内置库 + 用户库。 |
-| 🧩 **自定义类型** | 类型向导：填类型键、名称、图标、默认阈值，写入用户库后建条目。 |
+| ⏰ **Notification settings** | Global notification config (channels / mode / style); generates no entities. |
+| 📦 **Stock management** | Stock ledger: add / edit / remove stock items, quantities, and thresholds. |
+| 🗂️ **Consumable type** (battery / purifier filter / printer consumable / robot vacuum consumable / water purifier consumable…) | Bind device entities, monitor consumable status, and generate replacement to-dos. The list comes from the built-in + user libraries. |
+| 🧩 **Custom type** | Type wizard: enter the type key, name, icon, and default threshold; written to the user library before the entry is created. |
 
-> **每个类型仅允许添加一个条目**（重复添加会提示已配置）。建议先添加「通知渠道设置」再添加业务条目。
-> 条目在集成页面的排序固定为：⏰ 通知渠道设置 → 📦 耗材库存管理 → 各耗材类型条目。
+> **Each type allows only one entry** (adding a duplicate shows an "already configured" message). It is recommended to add "Notification settings" first, then business entries.
+> Entries are ordered on the integration page as: ⏰ Notification settings → 📦 Stock management → each consumable type entry.
 
-### 步骤 2：配置耗材类型条目
+### Step 2: Configure a consumable type entry
 
-添加「耗材类型」条目后，点击条目进入配置界面，菜单包含：
+After adding a "Consumable type" entry, click it to open the config menu:
 
-#### 绑定实体
-- **实体多选**：直接勾选要监控的实体（如 `sensor.air_purifier_filter_life`）。
-- **正则批量匹配**：输入正则表达式一次性批量选择，例如 `sensor\..*filter.*` 匹配所有名称含 filter 的传感器（已禁用实体自动排除）。
-- **群组绑定**：可选择辅助元素中的**群组**（`group.xxx`），每次刷新自动把群组成员展开为实际实体逐个评估，群组增减成员自动跟随。
-- 两种方式提交时取**并集**。
+**Create group → Edit group → Remove groups → Set threshold → Notification settings**. Monitoring is **group-based** — every group independently generates a diagnostic entity and a data sensor, and each group can override the entry-level threshold.
 
-#### 阈值设置
-| 字段 | 说明 |
+#### Create group (two kinds)
+
+**① Binding-entity group** (linked sensors / groups, evaluated by entity values):
+- **Entity multi-select**: tick the entities to monitor (e.g. `sensor.air_purifier_filter_life`).
+- **Regex batch matching**: enter a regular expression that is dynamically matched against current entity IDs at runtime (disabled entities are excluded automatically), e.g. `sensor\..*filter.*`; **newly matching entities join the group automatically with no reconfiguration**.
+- **Group binding**: you can pick a **group** helper (`group.xxx`); on every refresh the group's members are expanded into actual entities and evaluated one by one, and membership changes are followed automatically.
+- Manual multi-select and regex matches are merged as a **union** on submit.
+- Optionally tick **override entry-level threshold** to set a separate threshold type / value / unit / operator for this group.
+
+**② Custom consumable entity** (self-built countdown data, no entity binding required):
+- Enter a name, an optional bound consumable, the **added/replaced date**, and the **expected lifespan** (days / hours / minutes); a countdown data entity is generated automatically.
+- It can likewise override the entry-level threshold and is evaluated by elapsed usage time.
+
+#### Threshold settings (entry level)
+| Field | Description |
 | :--- | :--- |
-| **阈值类型** | 剩余寿命（%）/ 剩余时间 / 已使用时长——由绑定实体的语义决定。 |
-| **阈值** | 触发告警的数值。 |
-| **单位** | % / 分钟 / 小时 / 天（时间类型生效）。 |
-| **计算方式** | 大于 / 小于 / 等于——越过条件即判定「需要更换」。 |
+| **Threshold type** | Remaining life (%) / remaining time / elapsed usage — determined by the bound entity's semantics. |
+| **Threshold** | The value that triggers an alert. |
+| **Unit** | % / minutes / hours / days (for time-based types). |
+| **Operator** | Greater than / less than / equal — crossing the condition marks it as "needs replacement". |
 
-> 阈值默认值三级兜底：条目已存配置 → 库类型元数据（内置库或自定义类型向导中的默认阈值）→ 通用兜底（剩余寿命 20%）。
+> Threshold defaults fall back in three levels: stored entry config → library type metadata (default threshold from the built-in library or the custom type wizard) → generic fallback (remaining life 20%). When a group overrides the threshold, the group value wins.
 
-### 步骤 3：配置库存条目
+### Step 3: Configure the stock entry
 
-「耗材库存管理」条目的配置菜单：**添加库存项 → 修改库存项 → 删除库存项 → 通知渠道设置**。
+The "Stock management" entry config menu: **Add item → Edit item → Remove items → Notification settings**.
 
-#### 添加库存项（两种方式）
-- **常用耗材**：选关联耗材类型 → 从内置库 / 用户库下拉选择耗材 → 填数量与库存阈值。名称、单位自动带出。
-- **自定义**：手动填写名称、关联耗材类型（必选）、型号、单位、数量、库存阈值。提交时自动写入本地用户库（下次添加可直接选用）。
+#### Adding a stock item (two ways)
+- **Common consumable**: pick the linked consumable type → choose a consumable from the built-in / user library dropdown → enter quantity and stock threshold. Name and unit are filled in automatically.
+- **Custom**: manually enter name, linked consumable type (required), model, unit, quantity, and stock threshold. On submit it is written to the local user library (available in the dropdown next time).
 
-| 字段 | 说明 |
+| Field | Description |
 | :--- | :--- |
-| **名称** | 库存项显示名（即实体名）。 |
-| **关联耗材类型** | 必选——决定图标与更换时的扣减联动。 |
-| **数量** | 可为负数（负数表示欠货，实体切换警示图标）。 |
-| **库存阈值** | 低于此数量触发「库存不足」并生成待购待办。 |
+| **Name** | The stock item's display name (also the entity name). |
+| **Linked consumable type** | Required — decides the icon and the deduction link on replacement. |
+| **Model** | Only in the custom flow (letters / digits); used for consumable ID generation and user-library deduplication. |
+| **Unit** | Selected from a dropdown of standard units (piece / sheet / bottle…), translated automatically. |
+| **Quantity** | May be negative (negative means backorder; the entity switches to a warning icon). |
+| **Stock threshold** | Below this quantity a "low stock" alert and a purchase to-do are generated. |
 
-#### 修改库存项
-- 只允许修改**数量**与**库存阈值**；要改名称 / 型号 / 单位，请删除后重新添加。
+#### Editing a stock item
+- Only **quantity** and **stock threshold** may be changed; to change the name / model / unit, delete the item and add it again.
 
-#### 删除库存项
-- 多选批量删除。
+#### Removing stock items
+- Multi-select batch removal.
 
-### 步骤 4：配置通知
+### Step 4: Configure notifications
 
-#### 全局通知（⏰ 通知渠道设置条目）
-点击「通知渠道设置」条目直接进入表单：
+#### Global notifications (⏰ Notification settings entry)
+Click the "Notification settings" entry to open the form directly:
 
-| 字段 | 说明 |
+| Field | Description |
 | :--- | :--- |
-| **HA 系统通知** | 通过持久化通知推送（HA 通知中心）。 |
-| **通知实体** | 选择 notify 域实体（手机 App、短信网关等），可多选。 |
-| **消息样式** | `人性化文案`：「书房温湿度传感器电量低，请更换。」/ `状态值`：「书房温湿度传感器 18%」。 |
-| **推送模式** | `实时`：状态跳变瞬间推送 / `定时`：每天固定时刻把所有告警合并成一条统一推送。 |
-| **定时时刻** | 仅定时模式生效，默认 20:00。 |
+| **HA system notification** | Pushed as persistent notifications (HA notification center). |
+| **Notify entities** | Pick notify-domain entities (mobile app, SMS gateway, etc.), multi-select. |
+| **Message style** | `Human-friendly text`: "Study temp-humidity sensor battery is low, please replace." / `State value`: "Study temp-humidity sensor 18%". |
+| **Push mode** | `Real-time`: pushed the moment the state flips / `Scheduled`: all alerts merged into one digest at a fixed time each day. |
+| **Schedule time** | Only effective in scheduled mode; defaults to 20:00. |
 
-> 至少选择一个通知渠道，否则无法保存。
+> At least one notification channel must be selected, otherwise the form cannot be saved.
 
-#### 条目级覆盖（每个业务条目的「通知渠道设置」菜单项）
-- 开启「自定义本条目通知」后可为单个条目单独配置渠道 / 样式 / 模式，覆盖全局设置；关闭则删除覆盖段、回退全局。
-- 条目级也可选择**独立定时**（可自选时刻，留空跟随全局时刻），独立推送、不参与全局合并。
-- 通知为**边沿触发**：仅「正常 → 异常」跳变瞬间发送一次，持续异常不重复；重启后已处于异常的条目不补发（防止重启轰炸）。
+#### Per-entry overrides ("Notification settings" menu item on every business entry)
+- Enable "Customize notifications for this entry" to configure channel / style / mode per entry, overriding the global settings; turning it off deletes the override section and falls back to global.
+- Per-entry **independent scheduling** is also available (pick any time, leave empty to follow the global time) — pushed independently, not merged into the global digest.
+- Notifications are **edge-triggered**: sent only once at the "normal → abnormal" transition; sustained abnormality does not re-notify, and entries already abnormal at startup do not backfill (preventing restart floods).
 
 ---
 
-## 🛠️ 实体列表 (Entities)
+## 🛠️ Entities
 
-### 耗材库存管理条目
-| 实体 | 说明 |
+### Stock management entry
+| Entity | Description |
 | :--- | :--- |
-| `sensor.xx 库存项名称` | **状态**：库存数量。**属性**：关联耗材类型、单位、库存阈值、是否缺货等。**图标**：按关联耗材类型取库元数据图标，欠货时切换警示图标。 |
-| `sensor.xx 库存状态` | **状态**：`正常` / `库存不足`（枚举，诊断类）。**属性**：库存项数、缺货项清单。 |
-| `todo.xx 待办事项` | 购买待办：库存低于阈值自动生成「购买 XX」，采购完成后勾选。 |
+| `sensor.{item name}` | **State**: stock quantity. **Attributes**: linked consumable type, unit, stock threshold, shortage flag, etc. **Icon**: from the linked type's library metadata; switches to a warning icon in backorder. |
+| `sensor.{name} stock status` | **State**: `ok` / `low stock` (enum, diagnostic). **Attributes**: item count, list of short items. |
+| `todo.{name} to-do` | Purchase to-do: below the stock threshold a "Purchase XX" to-do is created automatically; check it off when procured. |
 
-### 耗材类型条目
-| 实体 | 说明 |
+### Consumable type entry
+Each **group** generates a pair of entities (diagnostic + data); custom consumable entity groups additionally get a countdown entity:
+| Entity | Description |
 | :--- | :--- |
-| `sensor.xx 更换状态` | **状态**：`正常` / `需要更换`（枚举，诊断类）。**属性**：耗材类型、绑定实体、触发实体、阈值（类型/值/单位/计算方式）、上次更换时间。 |
-| `todo.xx 待办事项` | 更换待办：越过阈值自动生成「更换 XX」，**勾选完成 = 已更换**（记录更换时间 + 自动扣减关联库存）。 |
+| `sensor.{group name} replace status` | **State**: `ok` / `needs replacement` (enum, diagnostic; one per group). **Attributes**: consumable type, group, triggering entities, threshold (type/value/unit/operator), last replaced time, bound consumable info. |
+| `sensor.{group name} data` | **State**: the minimum monitored value within the group (a plain number without a unit, easy to compare in automations). **Attributes**: group, consumable type, each bound entity's live value (including bound consumables). |
+| `sensor.{custom name} (countdown)` | Custom consumable entity groups only — **State**: remaining lifespan (in the lifespan unit d / h / min, `device_class: duration`). **Attributes**: expected lifespan, added/replaced dates. |
+| `todo.{name} to-do` | Replacement to-do: any group crossing its threshold creates a "Replace XX" to-do; **checking it off = replaced** (records the replacement time + automatically deducts the linked stock). |
 
-> 通知渠道设置条目不生成任何实体；未绑定实体 / 未添加库存项的条目同样不生成实体。
+> The notification settings entry generates no entities; entries with no bound entities / no stock items likewise generate no entities.
 
 ---
 
-## 🧰 服务 (Services)
+## 🧰 Services
 
-全部服务可在 **开发者工具 → 服务** 中调用（表单由 services.yaml 驱动），也可在自动化 / 脚本中使用。
+All services are available in **Developer Tools → Actions** (forms driven by services.yaml) and in automations / scripts.
 
-### consumable_manager.adjust_stock — 调整库存
-增加或减少库存项数量（自动化换耗材后自动扣库存的常用入口）。
+### consumable_manager.adjust_stock — Adjust stock
+Increase or decrease a stock item's quantity (the usual entry point for automatic stock deduction after replacing a consumable in an automation).
 ```yaml
 service: consumable_manager.adjust_stock
 data:
-  action: consume   # add 增加 / consume 减少
-  item: sensor.study_filter   # 库存项实体或 item_id
+  action: consume   # add / consume
+  item: sensor.study_filter   # stock item entity or item_id
   quantity: 1
 ```
 
-### consumable_manager.extract — 提取数据
-提取全部条目的结构化数据（JSON），适合接入仪表板或外部系统。
+### consumable_manager.query_data — Query data
+Extract structured data from this integration (JSON, **response-only service**, used with `response_variable`), suitable for dashboards or external systems. `data_type` is required:
+| data_type | Returns |
+| :--- | :--- |
+| `stock` | Stock items (filterable by item) |
+| `type_entry` | Consumable type entry states |
+| `group_data` | Group entity data (members include bound consumable fields) |
+| `types` | Consumable type metadata |
+| `consumables` | All consumables (filterable by type) |
+
 ```yaml
-service: consumable_manager.extract
+service: consumable_manager.query_data
 data:
-  include:          # 可选，缺省全部
-    - stock
-    - consumable_types
+  data_type: stock
 response_variable: result
 ```
 
-### consumable_manager.bind_entity — 绑定实体到耗材
-将设备耗材实体绑定到耗材库中的耗材（按设备自动匹配，或手动指定 consumable_id），可选关联一个库存项。
+### consumable_manager.bind_entity — Bind an entity to a consumable
+Bind a device consumable entity to a consumable in the library (**pure metadata mapping**, written to an independent binding layer, used only for to-do / notification display; does not trigger monitoring). Specify `consumable_id` manually, or pass only the linked stock item `item` (inherits the consumable linked to that stock item).
 ```yaml
 service: consumable_manager.bind_entity
 data:
   entity_id: sensor.air_purifier_filter_life
-  consumable_id: filter_hepa13   # 留空按设备自动匹配
+  consumable_id: filter_hepa13   # consumable ID entered manually (text)
+  # item: sensor.study_filter    # or pass a stock item entity to inherit its consumable
 ```
 
-### consumable_manager.query_binding — 查询绑定
-查询实体与耗材的绑定关系（按实体、耗材或库存项过滤）。
+### consumable_manager.unbind_entity — Unbind an entity
+Remove an entity's consumable binding mapping (only removes it from the independent binding layer; does not touch any entry's monitoring config).
+```yaml
+service: consumable_manager.unbind_entity
+data:
+  entity_id: sensor.air_purifier_filter_life
+```
 
-### consumable_manager.add_consumable — 添加耗材到用户库
-按模板字段添加耗材，写入本地用户库。耗材 ID 自动生成（类型 + 型号），如 `filter_hepa13`。
+### consumable_manager.query_binding — Query bindings
+Query entity ↔ consumable bindings (filter by entity, consumable, or stock item); the response includes each entity's threshold status (`triggered`).
+
+### consumable_manager.add_consumable — Add a consumable to the user library
+Add a consumable from template fields, written to the local user library. The consumable ID is generated automatically (type + model), e.g. `filter_hepa13`. `model` and `unit` must be English (ASCII; the unit must be one of the 18 standard keys such as `piece` / `filter`); the same fields in the config UI are dropdowns.
 ```yaml
 service: consumable_manager.add_consumable
 data:
   cons_type: filter
   model: HEPA-13
-  name: HEPA 13 滤芯
-  unit: 个
-  meta: {"grade": "H13"}   # 可选规格
+  name: HEPA 13 filter
+  unit: piece
+  meta: {"grade": "H13"}   # optional specs (any language)
 ```
 
-### consumable_manager.add_device — 添加设备映射
-在本地用户库中新增或覆盖设备与耗材的映射（锚点：制造商 + 型号，重叠整条替换）。
-```yaml
-service: consumable_manager.add_device
-data:
-  manufacturer: Xiaomi
-  models: '["zhimi.airpurifier.m4"]'
-  name: 米家空气净化器 4
-  consumables: '["filter_hepa13"]'
-```
-
-### consumable_manager.add_type — 添加自定义类型
-在本地用户库中新增自定义耗材类型（与配置界面的类型向导等效，适合自动化批量建类型）。类型键仅允许小写字母、数字与下划线，且不可与已有类型重复。
+### consumable_manager.add_type — Add a custom type
+Add a custom consumable type to the local user library (equivalent to the type wizard in the config UI; handy for creating types in bulk via automations). The type key only allows lowercase letters, digits, and underscores, and must not duplicate an existing type.
 
 ---
 
-## 📚 耗材库与数据贡献
+## 📚 Library & Data Contributions
 
-### 双库架构
-- **内置库**（`custom_components/consumable_manager/library/`）：随集成分发——`index.json`（类型元数据）、`consumables.json`（耗材）、`devices.json`（设备映射）、`names.json`（多语言映射）。
-- **用户库**（`config/.consumable_manager/user_library.json`）：本地数据，配置界面与服务写入，也支持手工编辑（重启生效）。同锚点条目用户优先、整条替换；坏文件自动降级忽略并告警。
+### Dual-library architecture and the binding layer
+- **Built-in library** (`custom_components/consumable_manager/library/`): shipped with the integration — `index.json` (type metadata), `consumables.json` (consumables), `names.json` (multi-language mappings).
+- **User library** (`config/.consumable_manager/user_library.json`): local data written by the config UI and services, and editable by hand (takes effect after restart). Entries with the same anchor: the user library wins and replaces the whole entry; a corrupt file is degraded and ignored with a warning.
+- **Binding layer** (HA storage `.storage/consumable_manager.bindings`): entity ↔ consumable binding mappings, persisted independently of entry config, used only for displaying specs in to-dos / notifications; maintained by the "Bind Entity / Unbind Entity" services.
 
-### 贡献你的耗材数据
-你的用户库就是贡献草稿：
+### Contribute your consumable data
+Your user library is the contribution draft:
 
-1. 复制 `config/.consumable_manager/user_library.json` 到仓库 `contributions/<你的GitHub用户名>/user_library.json`（提交前自查 meta 脱敏）。
-2. PR 到 `contributions` 分支。
-3. GitHub Actions 自动运行摄入工具：锚点去重、多语言拆解、排序归位，组装进内置库并回推分支（草稿自动移除）。
-4. 维护者审核后合入主分支。
+1. Copy `config/.consumable_manager/user_library.json` to `contributions/<your-github-username>/user_library.json` in the repo (check meta for sensitive data before submitting).
+2. PR to the **main** branch.
+3. GitHub Actions automatically runs the ingestion tool: field validation (code / identifier fields must be ASCII), anchor deduplication, multi-language splitting, sorting, and assembly into the built-in library, then pushes back to the PR (the draft is removed automatically).
+4. Maintainers review and merge into the main branch.
 
-详见 [library/README.md](custom_components/consumable_manager/library/README.md)（中英双语）。
+See [library/README.md](custom_components/consumable_manager/library/README.md) (bilingual, shipped with the library).
 
 ---
 
-## 💡 常见问题 (FAQ)
+## 💡 FAQ
 
-#### Q: 绑定群组后为什么看到的是成员实体而不是群组本身？
-#### A: 群组实体的状态是聚合值，无法直接做阈值判定。集成在每次刷新时把群组成员展开为实际实体逐个评估，群组增减成员自动跟随，无需重新配置。
+#### Q: After binding a group, why do I see the member entities instead of the group itself?
+#### A: A group entity's state is an aggregate value and cannot be evaluated against a threshold directly. On every refresh the integration expands group members into actual entities and evaluates them one by one; membership changes are followed automatically with no reconfiguration.
 
-#### Q: 重启后为什么没有收到告警通知？
-#### A: 通知是边沿触发设计——仅「正常 → 异常」跳变瞬间发送。重启时已处于异常的条目视为持续异常，不补发，防止重启轰炸。
+#### Q: Why didn't I receive an alert notification after a restart?
+#### A: Notifications are edge-triggered — sent only at the "normal → abnormal" transition. Entries already abnormal at restart count as sustained abnormality and are not re-sent, preventing restart floods.
 
-#### Q: 勾选「更换」待办会发生什么？
-#### A: 等同于标记已更换：记录上次更换时间（持久化，重启不丢），并自动扣减关联库存项的数量；若关联的是「待购」待办则不扣减。
+#### Q: What happens when I check off a "Replace" to-do?
+#### A: It is equivalent to marking as replaced: the last-replaced time is recorded (persisted, survives restarts) and the linked stock item's quantity is deducted automatically; if it is linked to a "purchase" to-do instead, nothing is deducted.
 
-#### Q: 用户库文件坏了会怎么样？
-#### A: 集成会整体降级忽略该文件并在日志中告警，内置库不受影响；修复或删除该文件后重启即可恢复。
+#### Q: What if the user library file is corrupt?
+#### A: The integration degrades gracefully, ignores the file, and logs a warning; the built-in library is unaffected. Repair or delete the file and restart to recover.
 
-#### Q: 服务下拉里为什么没有我的自定义类型？
-#### A: services.yaml 是静态文件，下拉只列内置类型。自定义类型直接手输类型键（已开启 custom_value），后端会校验其存在于合并库中。
+#### Q: Why doesn't the service dropdown show my custom type?
+#### A: services.yaml is a static file; the dropdown only lists built-in types. Type the type key directly for custom types (custom value is enabled); the backend validates that it exists in the merged library.
 
-#### Q: 添加库存项时选了「自定义」，数据存到哪里？
-#### A: 自动写入本地用户库 `config/.consumable_manager/user_library.json`（原子写盘），下次添加时可从下拉直接选用；该文件同时就是贡献草稿。
+#### Q: Where does the data go when I pick "Custom" when adding a stock item?
+#### A: It is written to the local user library `config/.consumable_manager/user_library.json` (atomic writes) and is available in the dropdown next time; that file doubles as the contribution draft.
