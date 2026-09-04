@@ -1,0 +1,34 @@
+# 耗材管理器集成真环境测试（pytest-homeassistant-custom-component）CI
+name: Run Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pytest:
+    name: pytest on real HA (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # 钉 0.13.305：对应 homeassistant==2026.1.0（集成声明最低支持版本）
+          pip install pytest pytest-asyncio voluptuous "pytest-homeassistant-custom-component==0.13.305"
+          # 集成自身无第三方依赖（manifest.json requirements 为空），无需额外安装
+
+      - name: Run pytest (real HA env)
+        run: |
+          python -m pytest tests/ -v
