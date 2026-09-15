@@ -342,6 +342,20 @@
           "added_at": {
             "name": "添加时间"
           },
+          "lifespan": {
+            "name": "建议寿命"
+          },
+          "lifespan_unit": {
+            "name": "寿命单位",
+            "state": {
+              "days": "天",
+              "hours": "小时",
+              "minutes": "分钟"
+            }
+          },
+          "remaining": {
+            "name": "剩余"
+          },
           "elapsed": {
             "name": "已使用时长"
           },
@@ -405,6 +419,12 @@
               "ink": "打印机耗材",
               "robot_vacuum": "扫地机耗材",
               "water_purifier": "净水器耗材"
+            }
+          },
+          "kind": {
+            "name": "类别",
+            "state": {
+              "custom_consumable_entity": "自定义耗材实体"
             }
           },
           "bound_entity_data": {

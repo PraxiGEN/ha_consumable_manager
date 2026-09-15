@@ -342,6 +342,20 @@
           "added_at": {
             "name": "Added date"
           },
+          "lifespan": {
+            "name": "Suggested lifespan"
+          },
+          "lifespan_unit": {
+            "name": "Lifespan unit",
+            "state": {
+              "days": "Days",
+              "hours": "Hours",
+              "minutes": "Minutes"
+            }
+          },
+          "remaining": {
+            "name": "Remaining"
+          },
           "elapsed": {
             "name": "Elapsed used time"
           },
@@ -405,6 +419,12 @@
               "ink": "Printer consumable",
               "robot_vacuum": "Robot vacuum consumable",
               "water_purifier": "Water purifier consumable"
+            }
+          },
+          "kind": {
+            "name": "Kind",
+            "state": {
+              "custom_consumable_entity": "Custom consumable entity"
             }
           },
           "bound_entity_data": {
