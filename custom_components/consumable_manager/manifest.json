@@ -4,10 +4,10 @@
   "codeowners": ["@PraxiGEN"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/PraxiGEN/ha-consumable-manager",
+  "documentation": "https://github.com/PraxiGEN/ha_consumable_manager",
   "integration_type": "service",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/PraxiGEN/ha-consumable-manager/issues",
+  "issue_tracker": "https://github.com/PraxiGEN/ha_consumable_manager/issues",
   "requirements": [],
-  "version": "0.1.18"
+  "version": "0.1.19"
 }
