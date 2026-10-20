@@ -6,7 +6,7 @@
 
 [![Release](https://img.shields.io/github/v/release/PraxiGEN/ha_consumable_manager)](https://github.com/PraxiGEN/ha_consumable_manager/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/PraxiGEN/ha_consumable_manager/blob/main/LICENSE)
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
 
 ## Consumable Manager is more than an inventory counter — it combines "device consumable status monitoring, stock management, replacement to-dos, due-date reminder notifications, and automation services" into one complete household consumable lifecycle management system. All data is processed locally and offline, with no dependency on any cloud service.
 
@@ -49,18 +49,18 @@
 
 ## 📦 Installation
 
-### Via HACS (recommended)
+### Using [HACS](https://hacs.xyz/) (Recommended)
 
-1. In HACS, under "Integrations", click the three-dot menu at the top right
-2. Select "Custom repositories"
-3. Enter this URL in the repository field:
-```yaml
-https://github.com/PraxiGEN/ha_consumable_manager
-```
-4. Choose "Integration" as the category
-5. Click "Add" to save
-6. Find "Consumable Manager" in HACS and click install
-7. Restart Home Assistant
+ One-click installation from HACS: 
+
+[![Open your Home Assistant instance and open the Consumable Manager inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=PraxiGEN&repository=ha_consumable_manager&category=integration)
+
+**Or manually:**
+
+1. Open Home Assistant
+2. Go to HACS
+3. In the search box, type **"Consumable Manager"**
+4. Click "Download"
 
 ### Manual installation
 

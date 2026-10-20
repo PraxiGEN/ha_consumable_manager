@@ -6,7 +6,7 @@
 
 [![Release](https://img.shields.io/github/v/release/PraxiGEN/ha_consumable_manager)](https://github.com/PraxiGEN/ha_consumable_manager/releases)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/PraxiGEN/ha_consumable_manager/blob/main/LICENSE)
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![HACS](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/integration)
 
 ## 耗材管理器不只是库存计数器——它把「设备耗材状态监控、库存管理、更换待办、到期提醒通知、自动化服务」整合成一套完整的家庭耗材生命周期管理体系。所有数据本地离线运行，不依赖任何云服务。
 
@@ -49,18 +49,18 @@
 
 ## 📦 安装
 
-### 通过 HACS 安装（推荐）
+### 使用 [HACS](https://hacs.xyz/) (推荐)
 
-1. 在 HACS 的"集成"部分，点击右上角的三点菜单
-2. 选择"自定义存储库"
-3. 在存储库字段输入：
-```yaml
-https://github.com/PraxiGEN/ha_consumable_manager
-```
-4. 类别选择"集成"
-5. 点击"添加"保存
-6. 在 HACS 中找到"Consumable Manager"集成并点击安装
-7. 重启 Home Assistant
+ One-click installation from HACS: 
+
+[![在 Home Assistant 社区商店中打开 Consumable Manager。](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=PraxiGEN&repository=ha_consumable_manager&category=integration)
+
+**或者手动操作：**
+
+1. 打开 Home Assistant
+2. 前往 **HACS**
+3. 在搜索框中输入 **"Consumable Manager"**
+4. 点击 **“下载 (Download)”**
 
 ### 手动安装
 
