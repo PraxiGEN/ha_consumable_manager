@@ -294,13 +294,18 @@ async def test_replace_todo_per_entity(hass, monkeypatch) -> None:
               for t in replace))
     check("待办均为待处理", all(t["status"] == "needs_action"
           for t in replace))
+    # 弱恢复（90%：过阈值但未进满值带）→ 不打钩，等用户手动确认
     hass.states.async_set("sensor.a", "90.0")
     await coord._async_refresh()
-    todos = coord.todo_dicts()
-    by_uid = {t["uid"]: t for t in todos}
-    check("恢复实体待办自动完成", by_uid[a_uid]["status"] == "completed")
+    by_uid = {t["uid"]: t for t in coord.todo_dicts()}
+    check("弱恢复不打钩", by_uid[a_uid]["status"] == "needs_action")
     check("仍触发实体待办保持待处理",
           by_uid[b_uid]["status"] == "needs_action")
+    # 满值带恢复（100%）→ 自动打钩（扫描判定，无需二次触发）
+    hass.states.async_set("sensor.a", "100.0")
+    await coord._async_refresh()
+    by_uid = {t["uid"]: t for t in coord.todo_dicts()}
+    check("满值带恢复自动打钩", by_uid[a_uid]["status"] == "completed")
     entry.options[CONF_SOURCE_ENTITIES] = [
         {"entity_id": "sensor.a", "device_name": "书房传感器"}]
     await coord._async_refresh()
