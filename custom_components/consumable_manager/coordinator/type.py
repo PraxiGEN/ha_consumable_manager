@@ -22,7 +22,9 @@ from ..const import (
     CONF_LIFESPAN, CONF_LIFESPAN_UNIT, custom_consumable_entity_id,
     NOTIFY_STYLE_VALUE, NOTIFY_TEXT_CONSUMABLES, NOTIFY_TEXT_DESC_AREA, NOTIFY_TEXT_DESC_DEVICE,
     NOTIFY_TEXT_DESC_ENTITY, NOTIFY_TEXT_DESC_SPECS, NOTIFY_TEXT_LAST_REPLACED, NOTIFY_TEXT_REPLACE_NEEDED,
-    NOTIFY_TEXT_UNKNOWN, OPERATOR_LESS_THAN, THRESHOLD_DEFAULT_OPERATOR, THRESHOLD_TYPE_REMAINING_TIME,
+    NOTIFY_TEXT_UNKNOWN, OPERATOR_LESS_THAN, REPLACE_CONFIRM_RATIO,
+    THRESHOLD_DEFAULT_OPERATOR, THRESHOLD_TYPE_LIFETIME_PERCENT,
+    THRESHOLD_TYPE_REMAINING_TIME,
     THRESHOLD_TYPE_USED_TIME, TIME_UNIT_TO_HOURS, TODO_KIND_REPLACE,
     STATE_OK, STATE_REPLACE_NEEDED, TODO_STATUS_NEEDS_ACTION, TODO_STATUS_COMPLETED, TIME_UOM_TO_HOURS,
     UNIT_DAYS, resolve_unit,
@@ -741,6 +743,34 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         if changed:
             options[CONF_BINDING_GROUPS] = new_groups
 
+    def _replacement_confirmed(self, entity_id: str) -> bool:
+        """恢复读数是否强到足以判定「已更换」（满值带判定）。
+
+        只有读数回到满量程 fresh 端 (1 − REPLACE_CONFIRM_RATIO) 带内才算确认：
+        - 剩余寿命 %：≥ 95（满量程 100 已知）
+        - 已使用时长：≤ 5% 阈值（计数器已清零）
+        - 其余（数值 / 剩余时间 / 自定义倒计时）：无满量程参考系或时间不可自然
+          恢复 → 不自动确认，仅手动勾选。
+        """
+        for group in self.groups:
+            if entity_id not in self._group_resolved(group):
+                continue
+            # 自定义倒计时：计时起点只由勾选 / 标记更换驱动，读数不构成更换证据
+            if self._group_is_custom(group):
+                return False
+            ttype, tval, tunit, _op = self._group_threshold(group)
+            value = self._read_values([entity_id], ttype)[0]
+            if value is None or tval is None:
+                return False
+            if ttype == THRESHOLD_TYPE_LIFETIME_PERCENT:
+                return value >= REPLACE_CONFIRM_RATIO * 100
+            if ttype == THRESHOLD_TYPE_USED_TIME:
+                # 本次读数已换算为小时，阈值同口径换算后再取 5% 带
+                threshold_hours = tval * TIME_UOM_TO_HOURS.get(tunit, 1.0)
+                return value <= (1 - REPLACE_CONFIRM_RATIO) * threshold_hours
+            return False
+        return False
+
     @callback
     def async_mark_replaced(self, uid: str | None = None) -> None:
         """标记已更换：记录时间、完成「更换」待办，并联动扣减关联类型的库存项。"""
@@ -790,7 +820,12 @@ class ConsumableTypeCoordinator(BaseCoordinator):
         newly_triggered: tuple[str, ...],
         newly_resolved: tuple[str, ...],
     ) -> None:
-        """每个触发实体各生成一条「更换」待办（差集驱动 + 内存恢复兜底）。"""
+        """每个触发实体各生成一条「更换」待办（差集驱动 + 内存恢复兜底）。
+
+        newly_resolved 不参与：恢复确认按全量扫描判定（步骤 2），
+        差集只用于触发侧的新增驱动。
+        """
+        _ = newly_resolved
         # 解绑清理用「展开后的实际实体集合」：绑定群组（group.xxx → 成员）时，
         # 触发成员待办不应被误判为「已解绑」而删除。
         bound = set(self.resolved_source_entities())
@@ -818,18 +853,25 @@ class ConsumableTypeCoordinator(BaseCoordinator):
             self._upsert_auto_todo(
                 uid, summary, TODO_STATUS_NEEDS_ACTION, description
             )
-        # 2. 本轮恢复正常：已存在对应待办 → completed（保留历史）
-        for entity_id in newly_resolved:
-            uid = self._auto_uid(TODO_KIND_REPLACE, entity_id)
-            if uid in self._todos and (
-                self._todos[uid]["status"] == TODO_STATUS_NEEDS_ACTION
-            ):
-                self._upsert_auto_todo(
-                    uid,
-                    self._todos[uid].get("summary"),
-                    TODO_STATUS_COMPLETED,
-                    self._todos[uid].get("description"),
-                )
+        # 2. 恢复确认：扫描「待处理的更换待办 + 实体已不在触发集」逐条判定满值带。
+        #    用扫描而非 newly_resolved 差集：读数先弱恢复离场、之后才冲进满值带时，
+        #    差集不会再次出现（实体已不在旧基线里），扫描则每次刷新都能补上确认。
+        #    弱恢复不动待办 —— 不误扣库存，等用户手动勾选确认。
+        triggered_now = (
+            set(self._current_triggered.members)
+            if self._current_triggered is not None
+            else set()
+        )
+        for uid, todo in list(self._todos.items()):
+            if not uid.startswith(replace_prefix):
+                continue
+            if todo["status"] != TODO_STATUS_NEEDS_ACTION:
+                continue
+            entity_id = uid[len(replace_prefix):]
+            if entity_id in triggered_now:
+                continue
+            if self._replacement_confirmed(entity_id):
+                self.async_mark_replaced(uid)
         # 3. 解绑清理：独立扫描 _todos 前缀，bound 外实体 → 删除（不是完成）
         for uid, todo in list(self._todos.items()):
             if not uid.startswith(replace_prefix):
