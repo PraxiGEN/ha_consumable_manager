@@ -2,6 +2,39 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.20 — 2026-11-11
+
+Fix: after replacing a consumable the to-do was checked off automatically, but stock was never deducted.
+
+### Fixed
+- **Stock not deducted after replacement**: the recovery branch completed the "Replace" to-do directly, bypassing the single replacement entry point `async_mark_replaced()`, so the replacement time was not recorded, the counter was not reset and the linked stock was not deducted. The branch now calls `async_mark_replaced()`, behaving exactly like a manual check-off.
+
+### Changed
+- **Auto check-off now requires the "fresh band"**: a reading only counts as *replaced* when it returns into the fresh end of the full scale (`REPLACE_CONFIRM_RATIO = 0.95`) — remaining life ≥ 95%, used time ≤ 5% of the threshold, remaining time ≥ 95% of the lifespan (lifespan must be configured). A weak recovery that merely goes back above the threshold no longer checks the to-do and no longer deducts stock; the to-do stays pending until confirmed manually.
+- Numeric thresholds and custom countdowns have no full-scale reference, so they can only be confirmed manually.
+- Recovery confirmation changed from "triggered-set diff" to "full scan of pending replacement to-dos on every refresh", fixing the timing case where a weak recovery leaves the trigger set first and the reading only later reaches the fresh band.
+
+## 0.1.19 — 2026-10-20
+
+Repository link fix, alongside the integration's inclusion in the HACS default repository.
+
+### Fixed
+- `documentation` and `issue_tracker` in `manifest.json` pointed at a wrong repository name (`ha-consumable-manager` → `ha_consumable_manager`), which also affected hassfest validation and documentation links.
+
+### Changed
+- Both READMEs: installation now says "search for it directly in HACS", no custom repository needed.
+
+## 0.1.18 — 2026-09-15
+
+### Fixed
+- Missing translations on custom consumable entities: `kind` leaked the internal constant `custom_consumable_entity`, and diagnostic entities of custom groups exposed `lifespan` / `lifespan_unit` / `remaining` with raw English field names and unit values (days / hours / minutes). All of them are now translated through `state_attributes` in `en` / `zh-Hans`.
+
+## 0.1.17 — 2026-09-04
+
+### Changed
+- Bilingual documentation sync: README, DOCS and CHANGELOG now exist in both English and Chinese, covering the 7 automation services, group monitoring, the dual-library design and the binding layer.
+- Added `data_suffix` to the CI test label table, fixing an assertion failure caused by the missing data-sensor name suffix on GitHub Actions.
+
 ## 0.1.16 — 2026-09-04
 
 First public release: a complete household consumable lifecycle management system — device consumable monitoring, stock management, replacement to-dos, due-date notifications, and automation services. All data is processed locally and offline.
