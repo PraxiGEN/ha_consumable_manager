@@ -138,6 +138,11 @@ THRESHOLD_DEFAULT_OPERATOR: Final[dict[str, str]] = {
     THRESHOLD_TYPE_USED_TIME: OPERATOR_GREATER_THAN,
 }
 
+# 自动确认「已更换」的满值带比例：读数须回到满量程 fresh 端 (1 − 该比例)
+# 带内才判定为真实更换（剩余寿命 %：≥ 95；已使用时长：≤ 5% 阈值）。
+# 仅「回到阈值上方」属于弱恢复：待办保持待处理，等用户手动勾选确认。
+REPLACE_CONFIRM_RATIO: Final = 0.95
+
 # ---- 耗材计量单位（locale 无关键：存储为 key，显示经翻译；resolve_unit
 #     翻译，未知 key / 旧字面量原样返回，向后兼容旧用户库与内置库）----
 CONSUMABLE_UNIT_PIECE: Final = "piece"      # 个
