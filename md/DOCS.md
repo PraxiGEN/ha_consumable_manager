@@ -111,6 +111,8 @@ Each **group** generates a pair of entities (diagnostic + data); custom consumab
 | `todo.{name} to-do` | Replacement to-do: any group crossing its threshold creates a "Replace XX" to-do; **checking it off = replaced** (records the replacement time + automatically deducts the linked stock). |
 
 > The notification settings entry generates no entities; entries with no bound entities / no stock items likewise generate no entities.
+>
+> **Auto check-off rule**: a reading that returns into the fresh band (remaining life ≥ 95%, used time ≤ 5% of the threshold) counts as "replaced" — the to-do is completed and the stock is deducted automatically. A weak recovery that merely goes back above the threshold neither checks the to-do nor deducts stock; it waits for a manual confirmation. Numeric thresholds and custom countdowns have no full-scale reference, so they are always confirmed manually.
 
 ---
 
