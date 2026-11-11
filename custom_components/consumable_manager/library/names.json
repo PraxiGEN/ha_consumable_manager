@@ -86,6 +86,9 @@
       "zh-Hans": "纽扣电池 CR2477",
       "en": "Button cell CR2477"
     },
+    "battery_cr3032": {
+      "zh-Hans": "纽扣电池 CR3032"
+    },
     "battery_d": {
       "zh-Hans": "1号电池 D",
       "en": "D size battery"
